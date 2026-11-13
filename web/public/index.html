@@ -43,6 +43,7 @@ window.__PCC_STANDALONE = true;
   window.__pcc = {
     async me() { return (await api("GET", "/api/me")).userId; },
     async login(userId, pin, setupCode) { try { await api("POST", "/api/login", { userId, pin, setupCode }); stream(); refreshAll(); return { ok: true }; } catch (e) { return { ok: false, error: e.message }; } },
+    async loginGoogle(credential) { try { const r = await api("POST", "/api/login/google", { credential }); stream(); refreshAll(); await new Promise((ok) => setTimeout(ok, 400)); return { ok: true, userId: r.userId }; } catch (e) { return { ok: false, error: e.message }; } },
     async logout() { await api("POST", "/api/logout", {}); stream(); refreshAll(); },
   };
   window.claude = { use: async (n) => (n === "db" ? db : n === "user" ? user : null) };
@@ -169,6 +170,9 @@ window.__PCC_STANDALONE = true;
 .cf-foot{display:flex;justify-content:space-between;gap:8px;padding:10px 14px;position:sticky;bottom:0;background:var(--surface)}
 .colpop .search input[type=search]{height:36px}
 @media (max-width:900px){.colbar{display:flex}.tt-hint{display:none}}
+.gbox{display:flex;flex-direction:column;gap:8px;padding:14px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface)}
+.or-line{display:flex;align-items:center;gap:10px;color:var(--faint);font-size:12.5px;font-weight:600}
+.or-line::before,.or-line::after{content:"";flex:1;height:1px;background:var(--line)}
 /* login */
 body.locked .app{display:none}
 .login{min-height:100vh;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);background:var(--bg)}
@@ -1807,7 +1811,9 @@ function showLogin(msg){
   let body = "";
   if (step==="who") {
     const q = (S.loginQ||"").toLowerCase(), list = loginPeople().filter(p=>!q || p.name.toLowerCase().includes(q));
-    body = `<div><h2>Who's signing in?</h2><p class="muted" style="margin:4px 0 0">Pick your name. ${S.myEmail?`This device is signed in to Claude as ${esc(S.myEmail)}.`:""}</p></div>
+    const gOn = STANDALONE && !!window.__PCC_GOOGLE_CLIENT_ID;
+    body = `<div><h2>${gOn?"Sign in":"Who's signing in?"}</h2><p class="muted" style="margin:4px 0 0">${gOn?"Use your work Google account.":"Pick your name."} ${S.myEmail?`This device is signed in to Claude as ${esc(S.myEmail)}.`:""}</p></div>
+      ${gOn?`<div class="gbox"><div id="gbtn" style="min-height:44px;display:flex;justify-content:center"></div><div class="err" id="gErr" style="justify-content:center;text-align:center"></div></div><div class="or-line"><span>or pick your name and use a PIN</span></div>`:""}
       <div class="search">${ic("search",17)}<input type="search" id="loginQ" placeholder="Search your name" value="${esc(S.loginQ||"")}" aria-label="Search people" autocomplete="off"></div>
       <div class="ulist" role="list">${list.map(p=>{ const lv = levelOf(p.id); const hasPin = S.pins.has(p.id); return `<button type="button" class="uitem" role="listitem" data-login-user="${p.id}">${avatar(p.id,40)}<span style="min-width:0;flex:1"><b>${esc(p.name)}</b>${p.id===S.account?' <span class="pill nodot p-slate" style="height:20px">You</span>':""}<small>${emailOf(p.id)?esc(emailOf(p.id))+" · ":""}${p.id===S.account?"No PIN needed on your own account":hasPin?"PIN protected":"First sign-in: you'll create a PIN"}</small></span><span class="chips" style="flex-wrap:nowrap">${lv?`<span class="lvl ${lv}">${lv}</span>`:""}${rolePillFor(p.id)}</span></button>`; }).join("") || `<p class="muted">Nobody matches “${esc(S.loginQ)}”.</p>`}</div>
       <p class="login-foot">Not on the list? Ask an Admin to add you under User management.</p>`;
@@ -1875,13 +1881,35 @@ function showLogin(msg){
     } catch { err("Couldn't check the PIN. Check your connection and try again."); }
     finally { btn?.classList.remove("loading"); }
   };
+  if (step==="who" && STANDALONE && window.__PCC_GOOGLE_CLIENT_ID) renderGoogleButton();
   setTimeout(()=>(L.querySelector("#pin1:not([disabled])") || L.querySelector('[aria-checked="true"]') || L.querySelector("#loginQ"))?.focus(), 30);
+}
+// Google sign-in (standalone server only): Google returns a signed ID token; the server checks it and matches the email to a team member.
+let gsiLoading = null;
+function renderGoogleButton(){
+  const draw = () => {
+    const el = $("#gbtn"); if (!el || !window.google?.accounts?.id) return;
+    if (!renderGoogleButton.init) { google.accounts.id.initialize({ client_id: window.__PCC_GOOGLE_CLIENT_ID, callback: onGoogleCredential, ux_mode: "popup", auto_select: false }); renderGoogleButton.init = true; }
+    el.innerHTML = ""; google.accounts.id.renderButton(el, { theme: document.documentElement.matches("[data-theme=dark]") || matchMedia("(prefers-color-scheme: dark)").matches ? "filled_black" : "outline", size: "large", text: "continue_with", shape: "pill", width: Math.min(360, el.clientWidth || 360) });
+  };
+  if (window.google?.accounts?.id) return draw();
+  gsiLoading ||= new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = "https://accounts.google.com/gsi/client"; sc.async = true; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); });
+  gsiLoading.then(draw).catch(() => { const e = $("#gErr"); if (e) e.textContent = "Couldn't load Google sign-in. Check your connection, or use your PIN below."; });
+}
+async function onGoogleCredential(resp){
+  const e = $("#gErr"); if (e) e.textContent = "";
+  const r = await window.__pcc.loginGoogle(resp.credential);
+  if (!r.ok) { if (e) e.textContent = r.error; return; }
+  S.me = r.userId;
+  if (!S.me || !loginPeople().some(p=>p.id===S.me)) { if (e) e.textContent = "Signed in, but your profile isn't loaded yet. Reload the page."; return; }
+  if (allowedPortals().length === 1) return enterPortal(allowedPortals()[0], { remember:true });
+  S.loginStep = "portal"; showLogin();
 }
 function signOut(switchUser){
   confirmDialog({ title: switchUser ? "Switch user?" : "Sign out?", body: switchUser ? "You'll go back to the list of people to pick who's signing in." : "You'll return to the sign-in screen on this device. Your work is saved for the team.", confirm: switchUser ? "Switch user" : "Sign out", icon:"logout", danger:!switchUser }).then(ok => {
     if (!ok) return;
     const who = nameOf(S.me);
-    if (STANDALONE) window.__pcc.logout().catch(()=>{});
+    if (STANDALONE) { window.__pcc.logout().catch(()=>{}); try { window.google?.accounts?.id?.disableAutoSelect(); } catch {} }
     clearSession(); S.open = null; S.bellOpen = S.userOpen = false; $("#layer").innerHTML = ""; closeMenu();
     S.me = null; S.loginStep = "who"; S.loginQ = "";
     history.replaceState(null, "", "#signin"); showLogin(switchUser ? "" : `${who} signed out.`);

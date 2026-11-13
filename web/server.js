@@ -15,6 +15,10 @@ const PORT = Number(process.env.PORT || 3000);
 const SETUP_CODE = process.env.SETUP_CODE || "";
 const DB_URL = process.env.DATABASE_URL || "";
 const SESSION_DAYS = 30;
+// Google sign-in: the OAuth client ID is public; ADMIN_EMAIL is made an Admin and the workspace owner on start.
+const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || "").trim();
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
+const TOKENINFO_URL = process.env.GOOGLE_TOKENINFO_URL || "https://oauth2.googleapis.com/tokeninfo";
 const PUBLIC_COLS = new Set(["team", "roles", "config", "pins"]);
 const ALL_COLS = new Set(["tasks", "team", "roles", "config", "projects", "recurring", "kpi", "invitations", "pins"]);
 const ADMIN_COLS = new Set(["roles", "config", "invitations", "kpi"]);
@@ -79,6 +83,38 @@ async function seedIfEmpty() {
 }
 
 // ---------- auth ----------
+async function verifyGoogle(credential) {
+  if (!GOOGLE_CLIENT_ID || typeof credential !== "string" || credential.length > 5000) return null;
+  const r = await fetch(`${TOKENINFO_URL}?id_token=${encodeURIComponent(credential)}`);
+  if (!r.ok) return null;
+  const t = await r.json();
+  const issOk = t.iss === "accounts.google.com" || t.iss === "https://accounts.google.com";
+  const verified = t.email_verified === true || t.email_verified === "true";
+  if (t.aud !== GOOGLE_CLIENT_ID || !issOk || !verified || Number(t.exp) * 1000 < Date.now() || !t.email) return null;
+  return { email: String(t.email).toLowerCase(), name: t.name || "" };
+}
+async function memberByEmail(email) {
+  return (await store.list("team")).find((m) => !m.data.removed && !m.data.linkedTo && String(m.data.email || "").toLowerCase() === email) || null;
+}
+async function ensureAdminEmail() {
+  if (!ADMIN_EMAIL) return;
+  let m = await memberByEmail(ADMIN_EMAIL);
+  if (!m) {
+    const local = ADMIN_EMAIL.split("@")[0].split(/[._+-]/)[0];
+    m = (await store.list("team")).find((x) => !x.data.removed && !x.data.linkedTo && !x.data.email && String(x.data.alias || x.data.displayName || "").toLowerCase().split(/\s+/)[0] === local) || null;
+    if (m) await store.put("team", m.id, { ...m.data, email: ADMIN_EMAIL });
+    else { const id = "p_" + local.replace(/[^a-z0-9]/g, "") + "-admin"; m = { id, data: { id, displayName: local.charAt(0).toUpperCase() + local.slice(1), email: ADMIN_EMAIL, placeholder: true, joinedAt: Date.now() } }; await store.put("team", id, m.data); }
+  }
+  const role = (await store.get("roles", m.id))?.data;
+  if (role?.role !== "admin") await store.put("roles", m.id, { ...(role || {}), role: "admin", by: "system", at: Date.now() });
+  const prevOwner = (await store.get("config", "owner"))?.data?.ownerId;
+  if (prevOwner !== m.id) {
+    // The previous owner keeps Admin rights through an explicit role.
+    if (prevOwner && !(await store.get("roles", prevOwner))) await store.put("roles", prevOwner, { role: "admin", by: "system", at: Date.now() });
+    await store.put("config", "owner", { ownerId: m.id });
+  }
+  log("info", "admin email ready", { userId: m.id });
+}
 const sha = (s) => createHash("sha256").update(s).digest("hex");
 const hashPin = async (pin, salt) => (await scrypt(pin, salt, 32)).toString("hex");
 const fails = new Map(); // userId -> { n, until }
@@ -152,6 +188,18 @@ const server = http.createServer(async (req, res) => {
       log("info", "signed in", { userId });
       return send(res, 200, { userId }, { "Set-Cookie": cookie(req, tok, SESSION_DAYS * 86400) });
     }
+    if (p === "/api/login/google" && req.method === "POST") {
+      if (!GOOGLE_CLIENT_ID) return send(res, 404, { error: "Google sign-in isn't set up." });
+      const { credential } = await body(req);
+      const g = await verifyGoogle(credential);
+      if (!g) return send(res, 401, { error: "Google sign-in didn't go through. Try again." });
+      const m = await memberByEmail(g.email);
+      if (!m) { log("warn", "google sign-in for unknown email", { email: g.email }); return send(res, 403, { error: `${g.email} isn't on the team yet. Ask an Admin to add this email in User management.` }); }
+      const tok = randomBytes(32).toString("base64url");
+      await store.sessNew(sha(tok), m.id, new Date(Date.now() + SESSION_DAYS * 864e5));
+      log("info", "signed in with google", { userId: m.id });
+      return send(res, 200, { userId: m.id }, { "Set-Cookie": cookie(req, tok, SESSION_DAYS * 86400) });
+    }
     if (p === "/api/logout" && req.method === "POST") {
       const tok = parseCookies(req).pcc_session; if (tok) await store.sessDel(sha(tok));
       return send(res, 200, { ok: true }, { "Set-Cookie": cookie(req, "", 0) });
@@ -189,6 +237,7 @@ const server = http.createServer(async (req, res) => {
 (async () => {
   store = DB_URL ? await pgStore() : await fileStore();
   await seedIfEmpty();
-  indexHtml = await readFile(path.join(DIR, "public", "index.html"), "utf8");
+  await ensureAdminEmail();
+  indexHtml = (await readFile(path.join(DIR, "public", "index.html"), "utf8")).replace("<script>", `<script>window.__PCC_GOOGLE_CLIENT_ID=${JSON.stringify(GOOGLE_CLIENT_ID)};</script><script>`);
   server.listen(PORT, () => log("info", "listening", { port: PORT, storage: DB_URL ? "postgres" : "file" }));
 })().catch((e) => { log("error", "startup failed", { error: e.message }); process.exit(1); });

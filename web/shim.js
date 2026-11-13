@@ -38,6 +38,7 @@ window.__PCC_STANDALONE = true;
   window.__pcc = {
     async me() { return (await api("GET", "/api/me")).userId; },
     async login(userId, pin, setupCode) { try { await api("POST", "/api/login", { userId, pin, setupCode }); stream(); refreshAll(); return { ok: true }; } catch (e) { return { ok: false, error: e.message }; } },
+    async loginGoogle(credential) { try { const r = await api("POST", "/api/login/google", { credential }); stream(); refreshAll(); await new Promise((ok) => setTimeout(ok, 400)); return { ok: true, userId: r.userId }; } catch (e) { return { ok: false, error: e.message }; } },
     async logout() { await api("POST", "/api/logout", {}); stream(); refreshAll(); },
   };
   window.claude = { use: async (n) => (n === "db" ? db : n === "user" ? user : null) };

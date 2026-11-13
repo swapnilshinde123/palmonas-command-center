@@ -12,6 +12,15 @@ The same app as the claude.ai page, running on its own server: tasks, approvals,
 
 Free plan limits: the web service sleeps after 15 minutes without visitors (the first visit then takes about a minute), and Render deletes free databases 30 days after creation unless you upgrade them. Upgrade the database to a paid plan before then to keep your data.
 
+## Google sign-in
+
+Set these on the Render service (Environment):
+
+- `GOOGLE_CLIENT_ID`: the OAuth client ID from Google Cloud (Credentials, type Web application, Authorized JavaScript origin = the app address). It isn't a secret.
+- `ADMIN_EMAIL`: this person becomes an Admin and the workspace owner on every start.
+
+A person signs in with Google only if their email is on their profile in User management. PIN sign-in stays available for people without an email.
+
 ## Run locally
 
 ```bash
