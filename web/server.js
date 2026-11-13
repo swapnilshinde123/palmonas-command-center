@@ -18,8 +18,10 @@ const SESSION_DAYS = 30;
 // Google sign-in: the OAuth client ID is public; ADMIN_EMAIL is made an Admin and the workspace owner on start.
 const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || "").trim();
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
+// With Google configured, PIN sign-in is off unless PIN_LOGIN=true.
+const PIN_LOGIN = process.env.PIN_LOGIN ? process.env.PIN_LOGIN === "true" : !GOOGLE_CLIENT_ID;
 const TOKENINFO_URL = process.env.GOOGLE_TOKENINFO_URL || "https://oauth2.googleapis.com/tokeninfo";
-const PUBLIC_COLS = new Set(["team", "roles", "config", "pins"]);
+let PUBLIC_COLS = new Set(["team", "roles", "config", "pins"]);
 const ALL_COLS = new Set(["tasks", "team", "roles", "config", "projects", "recurring", "kpi", "invitations", "pins"]);
 const ADMIN_COLS = new Set(["roles", "config", "invitations", "kpi"]);
 const SEG = /^[A-Za-z0-9_\-.~:@+]{1,200}$/;
@@ -164,6 +166,7 @@ const server = http.createServer(async (req, res) => {
       const c = { res, authed: !!me }; clients.add(c); req.on("close", () => clients.delete(c)); return;
     }
     if (p === "/api/login" && req.method === "POST") {
+      if (!PIN_LOGIN) return send(res, 403, { error: "PIN sign-in is turned off. Use Google." });
       const { userId, pin, setupCode } = await body(req);
       if (!SEG.test(String(userId || "")) || !/^\d{4,6}$/.test(String(pin || ""))) return send(res, 400, { error: "Enter 4 to 6 digits." });
       const member = await store.get("team", userId);
@@ -235,9 +238,11 @@ const server = http.createServer(async (req, res) => {
 });
 
 (async () => {
+  // Without PIN sign-in nobody needs the team list before signing in, so keep it private.
+  if (!PIN_LOGIN) PUBLIC_COLS = new Set(["config"]);
   store = DB_URL ? await pgStore() : await fileStore();
   await seedIfEmpty();
   await ensureAdminEmail();
-  indexHtml = (await readFile(path.join(DIR, "public", "index.html"), "utf8")).replace("<script>", `<script>window.__PCC_GOOGLE_CLIENT_ID=${JSON.stringify(GOOGLE_CLIENT_ID)};</script><script>`);
-  server.listen(PORT, () => log("info", "listening", { port: PORT, storage: DB_URL ? "postgres" : "file" }));
+  indexHtml = (await readFile(path.join(DIR, "public", "index.html"), "utf8")).replace("<script>", `<script>window.__PCC_GOOGLE_CLIENT_ID=${JSON.stringify(GOOGLE_CLIENT_ID)};window.__PCC_PIN_LOGIN=${PIN_LOGIN};</script><script>`);
+  server.listen(PORT, () => log("info", "listening", { port: PORT, storage: DB_URL ? "postgres" : "file", google: !!GOOGLE_CLIENT_ID, pinLogin: PIN_LOGIN }));
 })().catch((e) => { log("error", "startup failed", { error: e.message }); process.exit(1); });
