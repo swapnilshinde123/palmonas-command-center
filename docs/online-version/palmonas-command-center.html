@@ -499,6 +499,17 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--brand);flex:none}
 }
 @media (max-width:300px){ .stats,.band{grid-template-columns:1fr!important} .pill{white-space:normal;height:auto;min-height:23px;padding:2px 9px}  #userWrap{display:none} .hdr h1{font-size:15px} .hello .row{display:none} }
 .page{overflow-wrap:anywhere}
+
+/* iOS fixes */
+html,body{overflow-x:clip}
+input[type=date],input[type=time]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;line-height:40px;text-align:left}
+input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0}
+input[type=date]::-webkit-calendar-picker-indicator{opacity:.6}
+@media (max-width:900px){
+  input,select,textarea{font-size:16px!important}
+  .pop{position:fixed!important;left:max(12px,env(safe-area-inset-left,0px))!important;right:max(12px,env(safe-area-inset-right,0px))!important;top:calc(70px + env(safe-area-inset-top,0px))!important;width:auto!important;max-height:calc(100dvh - 100px);transform-origin:top center}
+}
+@media (max-width:900px){.modal-f>.row{flex:1;display:flex;gap:8px}.modal-f>.row .btn{flex:1;justify-content:center}.modal-f>.row .btn.primary{flex:2}.modal-f>.err:empty{display:none}}
 /* mobile polish */
 @media (max-width:640px){
   .tbl-stack{overflow:visible}
