@@ -8,6 +8,7 @@ import { randomBytes, scrypt as scryptCb, timingSafeEqual, createHash } from "no
 import { promisify } from "node:util";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createNotifier, emailInfo, previewEmail } from "./mailer.js";
 
 const scrypt = promisify(scryptCb);
 const DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -164,12 +165,14 @@ async function body(req) {
 }
 const publicView = (col, rows) => col === "team" ? rows.map((r) => ({ ...r, data: { ...r.data, email: undefined } })) : rows;
 let indexHtml = "";
+let notifier;
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
   try {
     if (p === "/healthz") return send(res, 200, { ok: true });
+    if (p.startsWith("/email-preview/") && !process.env.RENDER) { const m = previewEmail(p.split("/").pop()); res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" }); return res.end(m.html); }
     if (req.method === "GET" && (p === "/" || p === "/index.html")) { res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache", ...SEC_HEADERS }); return res.end(indexHtml); }
     if (!p.startsWith("/api/")) return send(res, 404, { error: "Not found" });
     // Writes need a custom header, which cross-site forms can't send.
@@ -244,7 +247,14 @@ const server = http.createServer(async (req, res) => {
       if (req.method === "GET") return send(res, 200, { doc: await store.get(col, id) });
       const adminNeeded = ADMIN_COLS.has(col) || (col === "team" && id !== me);
       if (adminNeeded && !(await isAdminUser(me))) return send(res, 403, { error: "Only an Admin can change this." });
-      if (req.method === "PUT") { const { data } = await body(req); if (!data || typeof data !== "object") return send(res, 400, { error: "Missing data" }); await store.put(col, id, data); broadcast(col); return send(res, 200, { ok: true }); }
+      if (req.method === "PUT") {
+        const { data } = await body(req); if (!data || typeof data !== "object") return send(res, 400, { error: "Missing data" });
+        const prev = (col === "tasks" || col === "invitations") ? (await store.get(col, id))?.data : undefined;
+        await store.put(col, id, data); broadcast(col);
+        if (col === "tasks") notifier.onTask(prev, data, me).catch((e) => log("error", "notify failed", { error: e.message }));
+        if (col === "invitations") notifier.onInvite(prev, data, me).catch((e) => log("error", "notify failed", { error: e.message }));
+        return send(res, 200, { ok: true });
+      }
       if (req.method === "DELETE") { await store.del(col, id); broadcast(col); return send(res, 200, { ok: true }); }
     }
     return send(res, 405, { error: "Method not allowed" });
@@ -261,6 +271,7 @@ const server = http.createServer(async (req, res) => {
   await seedIfEmpty();
   await resetIfRequested();
   await ensureAdminEmail();
-  indexHtml = (await readFile(path.join(DIR, "public", "index.html"), "utf8")).replace("<script>", `<script>window.__PCC_GOOGLE_CLIENT_ID=${JSON.stringify(GOOGLE_CLIENT_ID)};window.__PCC_PIN_LOGIN=${PIN_LOGIN};</script><script>`);
-  server.listen(PORT, () => log("info", "listening", { port: PORT, storage: DB_URL ? "postgres" : "file", google: !!GOOGLE_CLIENT_ID, pinLogin: PIN_LOGIN }));
+  notifier = createNotifier(store, log);
+  indexHtml = (await readFile(path.join(DIR, "public", "index.html"), "utf8")).replace("<script>", `<script>window.__PCC_GOOGLE_CLIENT_ID=${JSON.stringify(GOOGLE_CLIENT_ID)};window.__PCC_PIN_LOGIN=${PIN_LOGIN};window.__PCC_EMAIL=${JSON.stringify(emailInfo())};</script><script>`);
+  server.listen(PORT, () => log("info", "listening", { port: PORT, storage: DB_URL ? "postgres" : "file", google: !!GOOGLE_CLIENT_ID, pinLogin: PIN_LOGIN, email: emailInfo().provider || "off" }));
 })().catch((e) => { log("error", "startup failed", { error: e.message }); process.exit(1); });

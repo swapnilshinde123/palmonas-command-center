@@ -21,6 +21,16 @@ Set these on the Render service (Environment):
 
 A person signs in with Google only if their email is on their profile in User management. PIN sign-in stays available for people without an email.
 
+## Email notifications
+
+Emails go out for: task assigned or reassigned, invitations, transfer requests and decisions, extension / waiver / removal requests (to approvers) and decisions (to the requester), escalations, priority raised, task completed (to its creator), and task moved to the Bin. Only people with an email on their profile get them.
+
+Set on the Render service (Environment), then redeploy:
+
+- `BREVO_API_KEY` (recommended; free plan sends 300 emails a day over HTTPS), or `RESEND_API_KEY`, or `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` on paid plans.
+- `MAIL_FROM`: for example `Palmonas Command Center <harsh@palmonas.com>`. The address must be a verified sender at the provider.
+- `APP_URL` (optional): links in emails; defaults to the Render address.
+
 ## Run locally
 
 ```bash

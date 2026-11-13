@@ -1304,13 +1304,18 @@ function inviteModal(pre={}){
     setTimeout(()=> made.length===1 ? inviteSentModal(made[0]) : (toast(`${made.length} invitations created`), inviteSentModal({ ...made[0], email:made.map(m=>m.email).join(","), many:made.length })), 50);
   }});
 }
+const emailOn = () => STANDALONE && !!window.__PCC_EMAIL?.on;
 function inviteSentModal(inv){
+  if (emailOn()) return modal({ title: inv.many ? `${inv.many} invitations sent` : "Invitation sent", icon:"send", tone:"t-green", submit:"Done", noCancel:true, fields:[], body:`
+    <div class="success">${ic("check",16)}<span>We emailed ${inv.many?`${inv.many} people`:`<b>${esc(inv.email)}</b>`} an invitation to join as ${ROLE_LABEL[inv.role]}. You can assign tasks to them right away.</span></div>
+    <ol class="steps"><li><span><b>They open the email</b> and click <b>Accept invitation</b>.</span></li><li><span><b>They sign in with Google</b> using ${inv.many?"the invited email":esc(inv.email)}. That's it.</span></li></ol>
+    <p class="muted" style="margin:0;font-size:13px">Didn't arrive? Ask them to check spam, or resend from the Invitations tab.</p>`, run: async () => {} });
   const subject = "You're invited to the Palmonas Command Center";
   const mailto = `mailto:${encodeURIComponent(inv.email).replace(/%2C/g,",")}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(inviteText(inv))}`;
   modal({ title: inv.many ? `${inv.many} invitations ready` : "Invitation ready", icon:"check", tone:"t-green", submit:"Done", noCancel:true, fields:[], body:`
     <div class="success">${ic("check",16)}<span>${inv.many?`${inv.many} people are`:`<b>${esc(inv.email)}</b> is`} on the team as ${ROLE_LABEL[inv.role]}. You can assign tasks to them right away. Status stays <b>Pending</b> until they sign in.</span></div>
     <ol class="steps">
-      ${STANDALONE?`<li><span><b>Share the setup code privately.</b><br><span class="muted">They need the workspace setup code once, to create their PIN. Send it by phone or chat, not in the same email.</span></span></li>`:`<li><span><b>Give access to this page.</b><br><span class="muted">Open the page's <b>Share</b> menu and add ${inv.many?"their emails":esc(inv.email)}. ${inv.role==="admin"?"Admins need edit access.":"Access to use the page is enough."}</span></span></li>`}
+      ${STANDALONE?`<li><span><b>${window.__PCC_GOOGLE_CLIENT_ID?"They sign in with Google.":"Share the setup code privately."}</b><br><span class="muted">${window.__PCC_GOOGLE_CLIENT_ID?`Using ${inv.many?"the invited email":esc(inv.email)}. No password or code needed.`:"They need the workspace setup code once, to create their PIN. Send it by phone or chat, not in the same email."}</span></span></li>`:`<li><span><b>Give access to this page.</b><br><span class="muted">Open the page's <b>Share</b> menu and add ${inv.many?"their emails":esc(inv.email)}. ${inv.role==="admin"?"Admins need edit access.":"Access to use the page is enough."}</span></span></li>`}
       <li><span><b>Send the invitation.</b><br><span class="muted">Opens your email app with the message and link filled in.</span></span></li>
     </ol>
     <div class="inv-link"><span>${esc(APP_URL)}</span><button type="button" class="btn sm" data-copy="${esc(APP_URL)}">${ic("copy",14)} Copy link</button></div>
@@ -1319,7 +1324,7 @@ function inviteSentModal(inv){
 async function resendInvite(id){
   const inv = S.invites.get(id); if (!inv) return;
   const n = { ...inv, status:"PENDING", resentAt:Date.now(), resends:(inv.resends||0)+1 };
-  try { await S.db.doc("invitations/"+id).set(n); toast(`Invitation to ${inv.email} renewed for ${INVITE_DAYS} days`); inviteSentModal(n); } catch { toast("Couldn't resend. Only an Admin can manage invitations.","error"); }
+  try { await S.db.doc("invitations/"+id).set(n); toast(emailOn() ? `Invitation emailed again to ${inv.email}` : `Invitation to ${inv.email} renewed for ${INVITE_DAYS} days`); inviteSentModal(n); } catch { toast("Couldn't resend. Only an Admin can manage invitations.","error"); }
 }
 function inviteMenu(btn, id){
   const inv = S.invites.get(id); if (!inv) return;
@@ -1622,10 +1627,11 @@ function viewActivity(){
   return `<section class="card">${miniBar(["actQ","Search actions, tasks or IDs"],[["actWho","Everyone",ppOpts()],["actRange","Any time",[["1","Last 24 hours"],["7","Last 7 days"],["30","Last 30 days"]]],["actType","Any action",[["create","Created"],["status","Status changes"],["edit","Edits"],["req","Requests & decisions"],["esc","Escalations"],["bin","Bin & restore"]]],["actCh","Any channel",S.config.channels.map(c=>[c,c])]], `<b class="num" style="color:var(--fg)">${rows.length}</b> event${rows.length===1?"":"s"}`)}
   ${rows.length?`<div class="tbl-wrap"><table><tr><th>When (IST)</th><th>Who</th><th>What</th><th>Task</th></tr>${rows.slice(0,300).map(r=>`<tr class="click" data-open="${r.t.id}"><td class="num" style="white-space:nowrap">${fmtT(r.at)}</td><td><b>${esc(nameOf(r.by))}</b></td><td>${esc(r.text)}</td><td><span class="tname" style="font-weight:600">${esc(r.t.name)}</span><span class="tid">${r.t.id}${r.t.deleted?" · in Bin":""}</span></td></tr>`).join("")}</table></div>`:emptyState("activity","No activity matches","Try another search or person.")}</section>`;
 }
-const EMAIL_EVENTS = [["Task assigned to someone else","New owner"],["Transfer requested / decided","Proposed owner; requester"],["Priority changed","Owner, Admin + Leadership"],["Extension or waiver requested","Admin + Leadership"],["Extension or waiver decided","Requester + owner"],["Escalation raised or reassigned","Level owner + task owner"],["Removal requested","Admin + Leadership"]];
+const EMAIL_EVENTS = [["Task assigned or reassigned","New owner"],["Invitation sent or resent","Invited person"],["Transfer requested / decided","Proposed owner; requester"],["Extension, waiver or removal requested","Approvers (Admin, Leadership, owner's Team Leader)"],["Extension, waiver or removal decided","Requester + owner"],["Escalation raised, moved or resolved","Level owner + task owner"],["Priority raised","Owner"],["Task completed","Person who created it"],["Task moved to the Bin","Owner"]];
 function viewEmails(){
-  return `<div class="info">${ic("info",16)}<span>Email delivery isn\'t connected in this online version. Notifications reach people in the bell at the top right instead, live.</span></div>
-  <section class="card"><div class="card-h"><div><h2>${ic("bell",18)}Who gets notified</h2><p>Every event below appears in the bell for the people listed, the moment it happens.</p></div></div><div class="tbl-wrap"><table><tr><th>Event</th><th>Recipients</th><th>Bell</th><th>Email</th></tr>${EMAIL_EVENTS.map(([e,r])=>`<tr><td><b>${e}</b></td><td>${r}</td><td><span class="pill p-green">On</span></td><td><span class="pill p-slate">Off</span></td></tr>`).join("")}</table></div></section>`;
+  const on = emailOn();
+  return `${on?`<div class="success">${ic("check",16)}<span>Email notifications are <b>on</b>. People get an email for the events below, as long as their email is on their profile in User management. The bell shows them too.</span></div>`:`<div class="info">${ic("info",16)}<span>${STANDALONE?"Email notifications are off until an email service is connected on the server. The bell at the top right still shows every event live.":"Email delivery isn\'t connected in this online version. Notifications reach people in the bell at the top right instead, live."}</span></div>`}
+  <section class="card"><div class="card-h"><div><h2>${ic("bell",18)}Who gets notified</h2><p>Every event below appears in the bell for the people listed, the moment it happens.</p></div></div><div class="tbl-wrap"><table><tr><th>Event</th><th>Recipients</th><th>Bell</th><th>Email</th></tr>${EMAIL_EVENTS.map(([e,r])=>`<tr><td><b>${e}</b></td><td>${r}</td><td><span class="pill p-green">On</span></td><td>${on?`<span class="pill p-green">On</span>`:`<span class="pill p-slate">Off</span>`}</td></tr>`).join("")}</table></div></section>`;
 }
 function viewProfile(){
   const today = todayIso(), mine = [...S.tasks.values()].filter(t=>!t.deleted && t.ownerId===S.me);
@@ -1818,8 +1824,10 @@ function enterPortal(portal, { quiet=false, remember=null } = {}){
   document.body.classList.remove("locked"); $("#login").hidden = true; $("#login").innerHTML = "";
   const want = (location.hash||"").slice(1);
   S.view = routeTo(prev ? "" : want);
-  if (location.hash !== "#"+S.view) history.replaceState(null, "", "#"+S.view);
+  const deep = new URLSearchParams(location.search).get("task");
+  if (location.hash !== "#"+S.view || deep) history.replaceState(null, "", location.pathname + "#" + S.view);
   render(); window.scrollTo(0,0);
+  if (deep) setTimeout(() => { if (S.tasks.has(deep) && canSee(S.tasks.get(deep))) { S.open = deep; renderSheet(); } else toast("That task isn't available to you.","info"); }, 400);
   if (!quiet) toast(prev ? `Switched to the ${PORTALS[portal].label}` : `Signed in as ${nameOf(S.me)}`);
 }
 const loginBrand = () => `<section class="login-brand">
