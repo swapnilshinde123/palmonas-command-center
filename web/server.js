@@ -98,6 +98,23 @@ async function verifyGoogle(credential) {
 async function memberByEmail(email) {
   return (await store.list("team")).find((m) => !m.data.removed && !m.data.linkedTo && String(m.data.email || "").toLowerCase() === email) || null;
 }
+// One-time wipe: set RESET_KEY to a new value and redeploy. Keeps only the ADMIN_EMAIL person and workspace settings.
+async function resetIfRequested() {
+  const key = (process.env.RESET_KEY || "").trim();
+  if (!key) return;
+  if ((await store.get("config", "reset"))?.data?.key === key) return;
+  if (!ADMIN_EMAIL) { log("warn", "RESET_KEY ignored: ADMIN_EMAIL is not set"); return; }
+  const keep = await memberByEmail(ADMIN_EMAIL);
+  let n = 0;
+  for (const col of ["tasks", "projects", "recurring", "kpi", "invitations"]) for (const d of await store.list(col)) { await store.del(col, d.id); n++; }
+  for (const d of await store.list("team")) if (d.id !== keep?.id) { await store.del("team", d.id); n++; }
+  for (const d of await store.list("roles")) if (d.id !== keep?.id) { await store.del("roles", d.id); n++; }
+  for (const u of await store.pinIds()) if (u !== keep?.id) await store.pinDel(u);
+  const main = (await store.get("config", "main"))?.data || {};
+  await store.put("config", "main", { ...main, levels: {}, roleDefaults: main.roleDefaults || {} });
+  await store.put("config", "reset", { key, at: Date.now() });
+  log("info", "workspace reset", { deleted: n, kept: keep?.id || null });
+}
 async function ensureAdminEmail() {
   if (!ADMIN_EMAIL) return;
   let m = await memberByEmail(ADMIN_EMAIL);
@@ -242,6 +259,7 @@ const server = http.createServer(async (req, res) => {
   if (!PIN_LOGIN) PUBLIC_COLS = new Set(["config"]);
   store = DB_URL ? await pgStore() : await fileStore();
   await seedIfEmpty();
+  await resetIfRequested();
   await ensureAdminEmail();
   indexHtml = (await readFile(path.join(DIR, "public", "index.html"), "utf8")).replace("<script>", `<script>window.__PCC_GOOGLE_CLIENT_ID=${JSON.stringify(GOOGLE_CLIENT_ID)};window.__PCC_PIN_LOGIN=${PIN_LOGIN};</script><script>`);
   server.listen(PORT, () => log("info", "listening", { port: PORT, storage: DB_URL ? "postgres" : "file", google: !!GOOGLE_CLIENT_ID, pinLogin: PIN_LOGIN }));
