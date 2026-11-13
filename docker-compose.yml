@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16
+    environment: { POSTGRES_DB: palmonas, POSTGRES_USER: palmonas, POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}" }
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U palmonas"], interval: 5s, retries: 10 }
+  migrate:
+    build: { context: ., target: migrate }
+    env_file: .env
+    environment: { DATABASE_URL: "postgresql://palmonas:${POSTGRES_PASSWORD}@db:5432/palmonas", DIRECT_URL: "postgresql://palmonas:${POSTGRES_PASSWORD}@db:5432/palmonas" }
+    depends_on: { db: { condition: service_healthy } }
+  web:
+    build: { context: ., target: web }
+    env_file: .env
+    environment: { DATABASE_URL: "postgresql://palmonas:${POSTGRES_PASSWORD}@db:5432/palmonas", DIRECT_URL: "postgresql://palmonas:${POSTGRES_PASSWORD}@db:5432/palmonas" }
+    ports: ["3000:3000"]
+    depends_on: { migrate: { condition: service_completed_successfully } }
+    restart: unless-stopped
+volumes:
+  pgdata:

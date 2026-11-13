@@ -1,0 +1,738 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url       = env("DATABASE_URL")
+  // Neon: DATABASE_URL is the pooled URL; DIRECT_URL is the unpooled one used for migrations and LISTEN.
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
+enum RoleTier {
+  ADMIN
+  LEADERSHIP
+  MEMBER
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  key         String       @unique
+  name        String       @unique
+  description String       @default("")
+  permissions String[]
+  isSystem    Boolean      @default(false)
+  // Task-workspace tier: ADMIN/LEADERSHIP see all tasks; MEMBER sees own + contextual (brief §2).
+  tier        RoleTier     @default(MEMBER)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  users       User[]
+  invitations Invitation[]
+}
+
+model User {
+  id               String           @id @default(cuid())
+  email            String           @unique
+  name             String
+  title            String           @default("")
+  phone            String           @default("")
+  passwordHash     String?
+  roleId           String
+  role             Role             @relation(fields: [roleId], references: [id])
+  status           UserStatus       @default(ACTIVE)
+  lastLoginAt      DateTime?
+  failedLoginCount Int              @default(0)
+  lockedUntil      DateTime?
+  createdById      String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  version          Int              @default(1)
+  // 3-letter code used in task IDs (MMM-YYMMDD-NNN); immutable once set.
+  code             String           @unique @db.VarChar(3)
+  // Escalation owner for L1/L2/L3 (brief §7); independent of role.
+  escalationLevel  EscalationLevel? @unique
+
+  sentInvitations Invitation[]        @relation("InvitedBy")
+  ownedTasks      Task[]              @relation("TaskOwner")
+  ownedSubtasks   Subtask[]           @relation("SubtaskOwner")
+  ownedProjects   Project[]           @relation("ProjectOwner")
+  ownedMilestones Milestone[]
+  ownedSeries     RecurringSeries[]   @relation("SeriesOwner")
+  taskAccess      TaskAccess[]
+  notifications   InAppNotification[]
+
+  @@index([status])
+  @@index([roleId])
+}
+
+model Invitation {
+  id             String           @id @default(cuid())
+  email          String
+  roleId         String
+  role           Role             @relation(fields: [roleId], references: [id])
+  message        String           @default("")
+  tokenHash      String           @unique
+  status         InvitationStatus @default(PENDING)
+  expiresAt      DateTime
+  sentCount      Int              @default(1)
+  lastSentAt     DateTime         @default(now())
+  lastEmailOk    Boolean          @default(true)
+  invitedById    String?
+  invitedBy      User?            @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: SetNull)
+  acceptedAt     DateTime?
+  acceptedUserId String?
+  revokedAt      DateTime?
+  revokedById    String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([status, expiresAt])
+  @@index([email])
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  seq         BigInt   @unique @default(autoincrement())
+  actorId     String?
+  actorName   String
+  action      String
+  targetType  String
+  targetId    String?
+  targetLabel String   @default("")
+  meta        Json?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
+}
+
+model EmailLog {
+  id        String   @id @default(cuid())
+  to        String
+  subject   String
+  html      String
+  text      String
+  kind      String
+  relatedId String?
+  status    String // SENT | LOGGED | FAILED
+  error     String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  DROPPED
+}
+
+enum DepTier {
+  I
+  WB
+  E
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum EscalationLevel {
+  L1
+  L2
+  L3
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  ARCHIVED
+}
+
+enum MilestoneStatus {
+  PLANNED
+  IN_PROGRESS
+  DONE
+  MISSED
+}
+
+enum Cadence {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum TriggerMode {
+  TIME_DRIVEN
+  COMPLETION_DRIVEN
+}
+
+enum AnchorMode {
+  ORIGINAL_SCHEDULE
+  PREDECESSOR_COMPLETION
+}
+
+enum MissedPolicy {
+  CATCH_UP_ALL
+  LATEST_ONLY
+  SKIP_MISSED
+  MANUAL_REVIEW
+}
+
+enum PredecessorPolicy {
+  ALLOW
+  BLOCK
+  WARN
+}
+
+enum SeriesStatus {
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+enum NotificationStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  DEAD
+  SKIPPED
+}
+
+model Channel {
+  id        String            @id @default(cuid())
+  name      String            @unique
+  active    Boolean           @default(true)
+  sortOrder Int               @default(0)
+  tasks     Task[]
+  series    RecurringSeries[]
+}
+
+model Workstream {
+  id     String  @id @default(cuid())
+  name   String  @unique
+  active Boolean @default(true)
+  tasks  Task[]
+}
+
+model Holiday {
+  date DateTime @id @db.Date
+  name String
+}
+
+model AppConfig {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}
+
+model SlaPolicy {
+  id          String   @id
+  name        String
+  description String
+  // { matchPriorities?: number[], matchChannels?: string[], completionDays?: number, calendar: "CALENDAR"|"BUSINESS", escalationHours: {L2,L3} }
+  rules       Json
+  active      Boolean  @default(true)
+  rank        Int      @default(100)
+  createdAt   DateTime @default(now())
+  tasks       Task[]
+}
+
+model Project {
+  id          String            @id
+  name        String            @unique
+  description String            @default("")
+  status      ProjectStatus     @default(ACTIVE)
+  startDate   DateTime?         @db.Date
+  targetDate  DateTime?         @db.Date
+  ownerId     String
+  owner       User              @relation("ProjectOwner", fields: [ownerId], references: [id])
+  channels    String[]
+  closureNote String?
+  createdAt   DateTime          @default(now())
+  createdById String
+  updatedAt   DateTime          @updatedAt
+  updatedById String
+  version     Int               @default(1)
+  tasks       Task[]
+  milestones  Milestone[]
+  series      RecurringSeries[]
+}
+
+model Milestone {
+  id          String          @id @default(cuid())
+  projectId   String
+  project     Project         @relation(fields: [projectId], references: [id])
+  name        String
+  ownerId     String
+  owner       User            @relation(fields: [ownerId], references: [id])
+  targetDate  DateTime        @db.Date
+  status      MilestoneStatus @default(PLANNED)
+  weight      Decimal         @default(1) @db.Decimal(6, 2)
+  completedAt DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model Task {
+  id                    String           @id
+  name                  String
+  description           String           @default("")
+  channelId             String
+  channel               Channel          @relation(fields: [channelId], references: [id])
+  workstreamId          String?
+  workstream            Workstream?      @relation(fields: [workstreamId], references: [id])
+  projectId             String?
+  project               Project?         @relation(fields: [projectId], references: [id])
+  ownerId               String
+  owner                 User             @relation("TaskOwner", fields: [ownerId], references: [id])
+  priority              Int
+  status                TaskStatus       @default(NOT_STARTED)
+  assignedDate          DateTime         @db.Date
+  deadline              DateTime         @db.Date
+  originalDeadline      DateTime         @db.Date
+  followupDate          DateTime?        @db.Date
+  // Pending From (brief §6): pocType + pendingFrom (POC Name) are both set or both null.
+  pendingFrom           String?
+  pocType               DepTier?
+  pocId                 String?
+  poc                   Poc?             @relation("TaskPoc", fields: [pocId], references: [id])
+  pendingSince          DateTime?
+  remarks               String?
+  outputLink            String?
+  escalationRequired    Boolean          @default(false)
+  flagged               Boolean          @default(false)
+  flaggedById           String?
+  starred               Boolean          @default(false)
+  starredById           String?
+  starredAt             DateTime?
+  revenueCritical       Boolean          @default(false)
+  slaPolicyId           String?
+  slaPolicy             SlaPolicy?       @relation(fields: [slaPolicyId], references: [id])
+  startedAt             DateTime?
+  completedAt           DateTime?
+  completedById         String?
+  droppedReason         String?
+  extensionsCount       Int              @default(0)
+  waivedExtensionsCount Int              @default(0)
+  softDeleted           Boolean          @default(false)
+  deletedAt             DateTime?
+  deletedById           String?
+  deletionReason        String?
+  excludedFromMetrics   Boolean          @default(false)
+  seriesId              String?
+  series                RecurringSeries? @relation(fields: [seriesId], references: [id])
+  occurrenceNumber      Int?
+  scheduledDate         DateTime?        @db.Date
+  clonedFromId          String?
+  legacyId              String?          @unique
+  extra                 Json             @default("{}")
+  createdAt             DateTime         @default(now())
+  createdById           String
+  updatedAt             DateTime         @updatedAt
+  updatedById           String
+  version               Int              @default(1)
+
+  subtasks      Subtask[]
+  transfers     Transfer[]
+  extensions    ExtensionRequest[]
+  waivers       WaiverRequest[]
+  escalations   Escalation[]
+  cancellations CancellationRequest[]
+  access        TaskAccess[]
+  customPocs    Poc[]                 @relation("CustomPocTask")
+
+  @@unique([seriesId, scheduledDate])
+  @@index([pocType])
+  @@index([ownerId, status])
+  @@index([status, deadline])
+  @@index([softDeleted])
+}
+
+model Subtask {
+  id            String     @id
+  taskId        String
+  task          Task       @relation(fields: [taskId], references: [id])
+  title         String
+  description   String     @default("")
+  ownerId       String?
+  owner         User?      @relation("SubtaskOwner", fields: [ownerId], references: [id])
+  depType       DepTier?
+  pendingFrom   String?
+  required      Boolean    @default(true)
+  status        TaskStatus @default(NOT_STARTED)
+  dueDate       DateTime?  @db.Date
+  outputLink    String?
+  completedAt   DateTime?
+  completedById String?
+  droppedReason String?
+  createdAt     DateTime   @default(now())
+  createdById   String
+  updatedAt     DateTime   @updatedAt
+  version       Int        @default(1)
+
+  @@index([taskId])
+  @@index([ownerId])
+}
+
+model Transfer {
+  id                  String        @id @default(cuid())
+  taskId              String
+  task                Task          @relation(fields: [taskId], references: [id])
+  fromUserId          String
+  toUserId            String
+  initiatedById       String
+  reason              String
+  status              RequestStatus @default(PENDING)
+  adminOverride       Boolean       @default(false)
+  requestedAt         DateTime      @default(now())
+  deadlineAtRequest   DateTime      @db.Date
+  wasOverdueAtRequest Boolean
+  decidedById         String?
+  decidedAt           DateTime?
+  rejectionReason     String?
+
+  @@index([taskId])
+  @@index([toUserId, status])
+}
+
+model ExtensionRequest {
+  id                String          @id @default(cuid())
+  taskId            String
+  task              Task            @relation(fields: [taskId], references: [id])
+  requestedById     String
+  requestedAt       DateTime        @default(now())
+  previousDeadline  DateTime        @db.Date
+  requestedDeadline DateTime        @db.Date
+  reason            String
+  status            RequestStatus   @default(PENDING)
+  decidedById       String?
+  decidedAt         DateTime?
+  decisionReason    String?
+  finalDeadline     DateTime?       @db.Date
+  // Requests after completion are allowed (brief §8); they never reopen the task.
+  afterCompletion   Boolean         @default(false)
+  waivers           WaiverRequest[]
+
+  @@index([taskId])
+  @@index([status])
+}
+
+model WaiverRequest {
+  id             String            @id @default(cuid())
+  taskId         String
+  task           Task              @relation(fields: [taskId], references: [id])
+  // Optional link: a waiver can be requested with an extension, later against one, or on its own (brief §9).
+  extensionId    String?
+  extension      ExtensionRequest? @relation(fields: [extensionId], references: [id])
+  requestedById  String
+  requestedAt    DateTime          @default(now())
+  reason         String
+  status         RequestStatus     @default(PENDING)
+  decidedById    String?
+  decidedAt      DateTime?
+  decisionReason String?
+
+  @@index([status])
+}
+
+model CancellationRequest {
+  id             String        @id @default(cuid())
+  taskId         String
+  task           Task          @relation(fields: [taskId], references: [id])
+  requestedById  String
+  requestedAt    DateTime      @default(now())
+  kind           String // DROP | DELETE | RECOVER
+  reason         String
+  status         RequestStatus @default(PENDING)
+  decidedById    String?
+  decidedAt      DateTime?
+  decisionReason String?
+
+  @@index([status])
+}
+
+model Escalation {
+  id                String                  @id @default(cuid())
+  taskId            String
+  task              Task                    @relation(fields: [taskId], references: [id])
+  level             EscalationLevel         @default(L1)
+  assigneeId        String?
+  reason            String                  @default("")
+  active            Boolean                 @default(true)
+  revenueCritical   Boolean                 @default(false)
+  dependencyTier    DepTier?
+  pendingFrom       String?
+  triggeredById     String
+  triggeredAt       DateTime                @default(now())
+  levelEnteredAt    DateTime                @default(now())
+  lastResponseAt    DateTime?
+  lastResponseById  String?
+  resolvedById      String?
+  resolvedAt        DateTime?
+  resolutionRemarks String?
+  levelChanges      EscalationLevelChange[]
+
+  @@index([taskId])
+  @@index([active, level])
+}
+
+model EscalationLevelChange {
+  id           String           @id @default(cuid())
+  escalationId String
+  escalation   Escalation       @relation(fields: [escalationId], references: [id])
+  fromLevel    EscalationLevel?
+  toLevel      EscalationLevel
+  at           DateTime         @default(now())
+  actorId      String?
+  cause        String
+}
+
+model RecurringSeries {
+  id                 String            @id
+  title              String
+  description        String            @default("")
+  channelId          String
+  channel            Channel           @relation(fields: [channelId], references: [id])
+  ownerId            String
+  owner              User              @relation("SeriesOwner", fields: [ownerId], references: [id])
+  priority           Int
+  projectId          String?
+  project            Project?          @relation(fields: [projectId], references: [id])
+  dependencyTier     DepTier?
+  cadence            Cadence
+  interval           Int               @default(1)
+  weekdays           Int[]
+  dayOfMonth         Int?
+  workingDaysOnly    Boolean           @default(false)
+  startDate          DateTime          @db.Date
+  endDate            DateTime?         @db.Date
+  maxOccurrences     Int?
+  deadlineOffsetDays Int               @default(0)
+  triggerMode        TriggerMode       @default(TIME_DRIVEN)
+  anchorMode         AnchorMode        @default(ORIGINAL_SCHEDULE)
+  missedPolicy       MissedPolicy      @default(LATEST_ONLY)
+  overduePolicy      PredecessorPolicy @default(WARN)
+  droppedPolicy      PredecessorPolicy @default(BLOCK)
+  maxCatchUp         Int               @default(10)
+  nextOccurrenceDate DateTime?         @db.Date
+  occurrenceCount    Int               @default(0)
+  status             SeriesStatus      @default(ACTIVE)
+  // Pause needs a resume/follow-up date (brief §10).
+  pausedAt           DateTime?
+  pauseReason        String?
+  resumeDate         DateTime?         @db.Date
+  pausedById         String?
+  createdAt          DateTime          @default(now())
+  createdById        String
+  updatedAt          DateTime          @updatedAt
+  updatedById        String
+  version            Int               @default(1)
+  tasks              Task[]
+  skips              SeriesSkip[]
+  exceptions         SeriesException[]
+}
+
+model SeriesSkip {
+  seriesId     String
+  series       RecurringSeries @relation(fields: [seriesId], references: [id])
+  date         DateTime        @db.Date
+  reason       String
+  followupDate DateTime        @db.Date
+  byId         String
+  createdAt    DateTime        @default(now())
+
+  @@id([seriesId, date])
+}
+
+model SeriesException {
+  id         String          @id @default(cuid())
+  seriesId   String
+  series     RecurringSeries @relation(fields: [seriesId], references: [id])
+  kind       String // SPAWN_FAILED | MANUAL_REVIEW | PREDECESSOR_BLOCKED | OVERLAP_WARNING | SKIPPED_CYCLES
+  date       DateTime?       @db.Date
+  detail     String
+  resolved   Boolean         @default(false)
+  resolvedBy String?
+  createdAt  DateTime        @default(now())
+
+  @@index([seriesId, resolved])
+}
+
+model IdCounter {
+  namespace String
+  day       String
+  value     Int
+
+  @@id([namespace, day])
+}
+
+model IdempotencyRecord {
+  actorId   String
+  key       String
+  operation String
+  response  Json
+  createdAt DateTime @default(now())
+
+  @@id([actorId, key])
+}
+
+model AuditEvent {
+  id              String   @id @default(uuid()) @db.Uuid
+  seq             BigInt   @unique @default(autoincrement())
+  recordId        String
+  entityType      String
+  eventType       String
+  actorId         String?
+  actorName       String
+  at              DateTime @default(now())
+  previousValue   Json?
+  newValue        Json?
+  reason          String?
+  requestId       String?
+  relatedEntityId String?
+  result          String   @default("SUCCESS")
+
+  @@index([recordId, at])
+  @@index([eventType, at])
+}
+
+model NotificationEvent {
+  id            String             @id @default(cuid())
+  dedupKey      String
+  eventType     String
+  taskId        String?
+  recipientId   String
+  subject       String
+  payload       Json
+  status        NotificationStatus @default(PENDING)
+  attempts      Int                @default(0)
+  nextAttemptAt DateTime           @default(now())
+  claimedAt     DateTime?
+  lastAttemptAt DateTime?
+  sentAt        DateTime?
+  error         String?
+  errorCategory String?
+  createdAt     DateTime           @default(now())
+
+  @@unique([dedupKey, recipientId])
+  @@index([status, nextAttemptAt])
+}
+
+model ScorePolicy {
+  version       Int      @id
+  config        Json
+  effectiveFrom String // YYYY-MM
+  note          String
+  createdById   String
+  createdAt     DateTime @default(now())
+}
+
+model ScorecardPeriod {
+  month         String   @id // YYYY-MM
+  policyVersion Int
+  snapshot      Json
+  closedAt      DateTime @default(now())
+  closedById    String
+}
+
+model ScoreAdjustment {
+  id          String   @id @default(cuid())
+  userId      String
+  month       String
+  points      Decimal  @db.Decimal(8, 2)
+  kind        String // OVERRIDE | CORRECTION
+  reason      String
+  createdById String
+  createdAt   DateTime @default(now())
+
+  @@index([month])
+}
+
+model WorkerHeartbeat {
+  name      String   @id
+  lastRunAt DateTime
+  detail    Json?
+}
+
+// Contextual, per-task access for members (brief §2). Never grants access to the owner's other tasks.
+model TaskAccess {
+  id          String    @id @default(cuid())
+  taskId      String
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // CREATOR | PREVIOUS_OWNER | TRANSFER | EXTENSION | WAIVER | ESCALATION | COLLABORATOR | SUBTASK
+  reason      String
+  grantedById String?
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+  revokedById String?
+
+  @@unique([taskId, userId, reason])
+  @@index([userId, revokedAt])
+}
+
+// POC registry plus task-scoped custom POCs (brief §6).
+model Poc {
+  id                     String    @id @default(cuid())
+  name                   String
+  type                   DepTier
+  organisation           String    @default("")
+  contact                String    @default("")
+  // true = pre-saved registry entry; false = custom POC scoped to taskId.
+  isRegistry             Boolean   @default(false)
+  taskId                 String?
+  task                   Task?     @relation("CustomPocTask", fields: [taskId], references: [id], onDelete: Cascade)
+  active                 Boolean   @default(true)
+  createdById            String?
+  createdAt              DateTime  @default(now())
+  promotionRequestedAt   DateTime?
+  promotionRequestedById String?
+  promotedAt             DateTime?
+  promotedById           String?
+  verifiedNotDuplicate   Boolean   @default(false)
+  promotionRejectedAt    DateTime?
+  promotionRejectReason  String?
+  tasks                  Task[]    @relation("TaskPoc")
+
+  @@index([isRegistry, type])
+}
+
+// Bell notifications (brief §14). Kept even if email delivery fails.
+model InAppNotification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId    String?
+  eventType String
+  title     String
+  body      String    @default("")
+  dedupKey  String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([userId, dedupKey])
+  @@index([userId, readAt])
+}

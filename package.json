@@ -1,0 +1,51 @@
+{
+  "name": "palmonas-command-center",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Palmonas marketplace operations task tracker: tasks, Pending From, escalations, approvals, KPI, team and invitations",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "bash ./run-local.sh",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed.ts",
+    "test": "vitest run",
+    "e2e": "node scripts/e2e.mjs",
+    "postinstall": "prisma generate",
+    "worker": "tsx src/worker/index.ts",
+    "import:sheet": "tsx scripts/import-task-tracker.ts",
+    "dev:next": "next dev"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.3",
+    "bcryptjs": "3.0.3",
+    "csv-parse": "5.6.0",
+    "next": "15.5.29",
+    "next-auth": "4.24.15",
+    "nodemailer": "7.0.13",
+    "pg": "8.16.3",
+    "react": "19.1.10",
+    "react-dom": "19.1.10",
+    "swr": "2.3.8",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/nodemailer": "6.4.24",
+    "@types/pg": "8.15.6",
+    "@types/react": "19.1.17",
+    "@types/react-dom": "19.1.11",
+    "autoprefixer": "10.4.27",
+    "playwright": "1.63.0",
+    "postcss": "8.5.32",
+    "prisma": "6.19.3",
+    "tailwindcss": "3.4.19",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7"
+  }
+}
