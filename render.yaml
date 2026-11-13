@@ -1,47 +1,31 @@
-# Render Blueprint: one always-on web service. The database is Neon (free tier); paste its URLs when prompted.
+# Render Blueprint: the Palmonas Command Center web app (web/) plus a Postgres database.
+# Nothing to paste: Render links the database and generates the workspace setup code.
+# The Next.js version lives at the repo root; its Blueprint is docs/render-nextjs.yaml.
+databases:
+  - name: palmonas-db
+    plan: free
+    region: singapore
+    databaseName: palmonas
+    user: palmonas
+    postgresMajorVersion: "16"
+
 services:
   - type: web
-    name: palmonas-ops
+    name: palmonas-command-center
     runtime: node
+    plan: free
     region: singapore
-    plan: starter
-    buildCommand: npm ci && npx prisma migrate deploy && npm run build && npx tsx prisma/seed.ts
-    startCommand: npx next start -p $PORT
-    healthCheckPath: /login
+    rootDir: web
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /healthz
     envVars:
       - key: NODE_VERSION
-        value: "22.23.4"
+        value: "22"
       - key: DATABASE_URL
-        sync: false
-      - key: DIRECT_URL
-        sync: false
-      - key: NEXTAUTH_URL
-        sync: false
-      - key: APP_BASE_URL
-        sync: false
-      - key: NEXTAUTH_SECRET
+        fromDatabase:
+          name: palmonas-db
+          property: connectionString
+      # Shown under Environment in the Render dashboard; each person enters it once, when creating their PIN.
+      - key: SETUP_CODE
         generateValue: true
-      - key: GOOGLE_CLIENT_ID
-        sync: false
-      - key: GOOGLE_CLIENT_SECRET
-        sync: false
-      - key: ALLOWED_EMAIL_DOMAINS
-        sync: false
-      - key: SEED_OWNER_EMAIL
-        sync: false
-      - key: SEED_OWNER_NAME
-        sync: false
-      - key: PASSWORD_LOGIN
-        value: "false"
-      - key: SMTP_HOST
-        sync: false
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASSWORD
-        sync: false
-      - key: SMTP_FROM
-        sync: false
-      - key: BUSINESS_TZ
-        value: Asia/Kolkata
-      - key: RUN_WORKER
-        value: "true"

@@ -432,6 +432,8 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--brand);flex:none}
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <script>
 // ---------- constants ----------
+// STANDALONE: the page runs on its own server (web/server.js) instead of claude.ai; sign-in is checked by that server.
+const STANDALONE = !!window.__PCC_STANDALONE;
 const CHANNELS_DEFAULT = ["Amazon","Blinkit","Swiggy","Myntra","Nykaa","Flipkart","Tata CLiQ","Ajio","General"];
 const POC = { I:"Internal", WB:"Within Brand", E:"External" };
 const STATUS = { NOT_STARTED:["Not started","p-slate"], IN_PROGRESS:["In progress","p-blue"], ON_HOLD:["On hold","p-amber"], COMPLETED:["Completed","p-green"], DROPPED:["Dropped","p-slate"] };
@@ -1080,7 +1082,7 @@ function viewBin(){
   return `<p class="lead">Binned tasks keep their ID and history and can be restored. ${can("purge")?"Purging deletes a task for good.":"Only people with purge access can delete for good."}</p><section class="card">${allBin.length?miniBar(["binQ","Search binned tasks"],[["binBy","Binned by anyone",ppOpts()],["binCh","Any channel",S.config.channels.map(c=>[c,c])]], shown(rows.length, allBin.length, "task")):""}${rows.length?rows.map(t=>`<div class="pad row spread" style="border-bottom:1px solid var(--line);padding-top:16px"><div style="min-width:0"><span class="tname">${esc(t.name)}</span><span class="tid">${t.id}</span><br><small class="muted">Binned by ${esc(nameOf(t.deletedBy))} ${t.deletedAt?ago(t.deletedAt):""} · ${esc(t.deletedReason||"")}</small></div><div class="row"><button class="btn sm" data-restore="${t.id}">${ic("restore",14)} Restore</button>${can("purge")?`<button class="btn sm danger" data-purge="${t.id}">${ic("trash",14)} Purge</button>`:""}</div></div>`).join(""):emptyState("trash", allBin.length?"Nothing matches":"The Recycle Bin is empty")}</section>`;
 }
 // ---------- user management ----------
-const APP_URL = "https://claude.ai/artifact/BGkajgz9e1neeuBxxZ3w82";
+const APP_URL = STANDALONE ? location.origin : "https://claude.ai/artifact/BGkajgz9e1neeuBxxZ3w82";
 const INVITE_DAYS = 14;
 const inviteStatus = (i) => i.status==="PENDING" && Date.now() - (i.resentAt||i.sentAt) > INVITE_DAYS*864e5 ? "EXPIRED" : i.status;
 const INV_PILL = { PENDING:["Pending","p-amber"], ACCEPTED:["Accepted","p-green"], EXPIRED:["Expired","p-slate"], REVOKED:["Revoked","p-red"] };
@@ -1231,7 +1233,7 @@ function inviteSentModal(inv){
   modal({ title: inv.many ? `${inv.many} invitations ready` : "Invitation ready", icon:"check", tone:"t-green", submit:"Done", noCancel:true, fields:[], body:`
     <div class="success">${ic("check",16)}<span>${inv.many?`${inv.many} people are`:`<b>${esc(inv.email)}</b> is`} on the team as ${ROLE_LABEL[inv.role]}. You can assign tasks to them right away. Status stays <b>Pending</b> until they sign in.</span></div>
     <ol class="steps">
-      <li><span><b>Give access to this page.</b><br><span class="muted">Open the page's <b>Share</b> menu and add ${inv.many?"their emails":esc(inv.email)}. ${inv.role==="admin"?"Admins need edit access.":"Access to use the page is enough."}</span></span></li>
+      ${STANDALONE?`<li><span><b>Share the setup code privately.</b><br><span class="muted">They need the workspace setup code once, to create their PIN. Send it by phone or chat, not in the same email.</span></span></li>`:`<li><span><b>Give access to this page.</b><br><span class="muted">Open the page's <b>Share</b> menu and add ${inv.many?"their emails":esc(inv.email)}. ${inv.role==="admin"?"Admins need edit access.":"Access to use the page is enough."}</span></span></li>`}
       <li><span><b>Send the invitation.</b><br><span class="muted">Opens your email app with the message and link filled in.</span></span></li>
     </ol>
     <div class="inv-link"><span>${esc(APP_URL)}</span><button type="button" class="btn sm" data-copy="${esc(APP_URL)}">${ic("copy",14)} Copy link</button></div>
@@ -1257,7 +1259,7 @@ async function copyText(text){
 }
 // Runs in an Admin's browser: when an invited person signs in with the invited email, link the placeholder and mark the invitation accepted.
 async function reconcileInvites(){
-  if (!realAdmin() || S.reconciling || !S.loaded) return;
+  if (STANDALONE || !realAdmin() || S.reconciling || !S.loaded) return;
   S.reconciling = true;
   try {
     for (const inv of S.invites.values()) {
@@ -1721,9 +1723,10 @@ async function hashPin(pin, salt){
   catch { let h = 2166136261; for (const c of txt) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return "f" + (h>>>0).toString(16); }
 }
 const loginPeople = () => { const list = people(); if (S.account && !list.some(p=>p.id===S.account) && !S.team.get(S.account)?.removed) list.push({ id:S.account, name:nameOf(S.account) }); return list.sort((a,b)=>(b.id===S.account)-(a.id===S.account) || a.name.localeCompare(b.name)); };
-function resumeSession(){
-  if (S.team.get(S.account)?.removed) return;
+async function resumeSession(){
+  if (S.account && S.team.get(S.account)?.removed) return;
   const sess = readSession();
+  if (STANDALONE) { const who = await window.__pcc.me().catch(()=>null); if (!sess || who!==sess.user) { if (who) await window.__pcc.logout().catch(()=>{}); clearSession(); S.me = null; return showLogin(); } }
   if (sess && loginPeople().some(p=>p.id===sess.user)) { S.me = sess.user; if (allowedPortals().includes(sess.portal)) return enterPortal(sess.portal, { quiet:true }); }
   S.me = null; showLogin();
 }
@@ -1766,6 +1769,7 @@ function showLogin(msg){
       <div><h2 style="font-size:22px">${has?"Enter your PIN":"Create your PIN"}</h2><p class="muted" style="margin:4px 0 0">${has?"The 4 to 6 digit PIN you chose.":"Choose 4 to 6 digits. You'll use it every time you sign in."}</p></div>
       <label class="f">${has?"PIN":"New PIN"}<input type="password" id="pin1" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" class="pin-in" ${lock>0?"disabled":""}><span class="err" id="pinErr">${lock>0?`Too many attempts. Try again in ${Math.ceil(lock/1000)} seconds.`:""}</span></label>
       ${has?"":`<label class="f">Confirm PIN<input type="password" id="pin2" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" class="pin-in"></label>`}
+      ${!has && STANDALONE?`<label class="f">Workspace setup code<input type="password" id="setupCode" autocomplete="off"><small>Needed only the first time. Your Admin has it.</small></label>`:""}
       <button class="btn primary" type="submit" id="loginBtn" style="height:46px;font-size:15px" ${lock>0?"disabled":""}>${has?"Sign in":"Create PIN and sign in"} ${arrowR()}</button>
       ${has?`<p class="login-foot">Forgot your PIN? Ask an Admin to reset it from User management.</p>`:""}`;
   } else {
@@ -1788,12 +1792,22 @@ function showLogin(msg){
   form.oninput = (e) => { if (e.target.id==="loginQ") { S.loginQ = e.target.value; const pos = e.target.selectionStart; showLogin(msg); const i = $("#loginQ"); i.focus(); i.setSelectionRange(pos,pos); } if (e.target.classList.contains("pin-in")) { e.target.value = e.target.value.replace(/\D/g,""); $("#pinErr").textContent = ""; e.target.removeAttribute("aria-invalid"); } };
   form.onsubmit = async (e) => {
     e.preventDefault();
+    const has = S.pins.has(S.me);
     if (step==="portal") { const btn = $("#loginBtn"); btn.classList.add("loading"); setTimeout(() => { btn.classList.remove("loading"); enterPortal(S.loginPick, { remember: $("#rememberMe").checked }); }, 250); return; }
     if (step!=="pin") return;
     const p1 = $("#pin1").value, err = (m) => { $("#pinErr").textContent = m; $("#pin1").setAttribute("aria-invalid","true"); $("#pin1").focus(); };
     if (!/^\d{4,6}$/.test(p1)) return err("Enter 4 to 6 digits.");
     const btn = $("#loginBtn"); btn.classList.add("loading");
     try {
+      if (STANDALONE) {
+        if (!has && $("#pin2").value !== p1) { $("#pin2").setAttribute("aria-invalid","true"); return err("The two PINs don't match."); }
+        if (!has && !$("#setupCode").value.trim()) { $("#setupCode").setAttribute("aria-invalid","true"); $("#setupCode").focus(); $("#pinErr").textContent = "Enter the workspace setup code."; return; }
+        const r = await window.__pcc.login(S.me, p1, has ? "" : $("#setupCode").value.trim());
+        if (!r.ok) return err(r.error);
+        S.pins.set(S.me, { hasPin:true });
+        if (allowedPortals().length === 1) return enterPortal(allowedPortals()[0], { remember:true });
+        S.loginStep = "portal"; return showLogin();
+      }
       const rec = S.pins.get(S.me);
       if (rec) {
         if (await hashPin(p1, rec.salt) !== rec.hash) {
@@ -1818,6 +1832,7 @@ function signOut(switchUser){
   confirmDialog({ title: switchUser ? "Switch user?" : "Sign out?", body: switchUser ? "You'll go back to the list of people to pick who's signing in." : "You'll return to the sign-in screen on this device. Your work is saved for the team.", confirm: switchUser ? "Switch user" : "Sign out", icon:"logout", danger:!switchUser }).then(ok => {
     if (!ok) return;
     const who = nameOf(S.me);
+    if (STANDALONE) window.__pcc.logout().catch(()=>{});
     clearSession(); S.open = null; S.bellOpen = S.userOpen = false; $("#layer").innerHTML = ""; closeMenu();
     S.me = null; S.loginStep = "who"; S.loginQ = "";
     history.replaceState(null, "", "#signin"); showLogin(switchUser ? "" : `${who} signed out.`);
@@ -2018,22 +2033,23 @@ window.addEventListener("resize", () => { if (S.colOpen) placeColPop(); });
 window.addEventListener("hashchange", () => { S.colOpen = null; if (!S.portal) return; const v = routeTo((location.hash||"").slice(1)); S.view = v; if (location.hash !== "#"+v) history.replaceState(null, "", "#"+v); if (S.view!=="projects") S.filters.project = ""; S.open = null; $("#layer").innerHTML = ""; render(); window.scrollTo(0,0); $("#view").focus({ preventScroll:true }); });
 
 // ---------- boot ----------
+window.__pccOnExpired = () => { if (S.portal) { clearSession(); S.me = null; S.loginStep = "who"; showLogin(); toast("Your session ended. Sign in again.","info"); } };
 function skeleton(){ return `<div class="sk" style="height:56px;max-width:420px"></div><div class="stats">${"<div class='sk' style='height:118px'></div>".repeat(6)}</div><div class="sk" style="height:110px;border-radius:20px"></div><div class="sk" style="height:320px;border-radius:16px"></div>`; }
 (async function boot(){
   $("#menuBtn").innerHTML = ic("menu",20); $("#hsIc").outerHTML = ic("search",17); $(".add-top").innerHTML = `${ic("plus",17)}<span>Add task</span>`;
   S.view = "home";
   $("#view").innerHTML = skeleton(); renderShell();
-  const timer = setTimeout(() => { if (!S.loaded) $("#view").innerHTML = `<section class="card">${emptyState("user","This page needs a signed-in claude.ai account","Open it while signed in. If you are signed in, ask the owner to share it with you.")}</section>`; }, 10000);
+  const timer = setTimeout(() => { if (!S.loaded) $("#view").innerHTML = `<section class="card">${(STANDALONE ? emptyState("alert","Can't reach the server","Check your connection and reload the page.") : emptyState("user","This page needs a signed-in claude.ai account","Open it while signed in. If you are signed in, ask the owner to share it with you."))}</section>`; }, 10000);
   const [db, user] = await Promise.all([window.claude?.use?.("db") ?? null, window.claude?.use?.("user") ?? null]);
   if (!db || !user) { clearTimeout(timer); $("#view").innerHTML = `<section class="card">${emptyState("user","Sign in to claude.ai to use the Command Center","The shared task database is only available to signed-in people the owner has shared this page with.")}</section>`; return; }
   S.db = db; S.user = user;
-  S.account = await user.id(); S.isOwner = await user.isOwner(); S.me = null;
+  S.account = STANDALONE ? null : await user.id(); S.isOwner = STANDALONE ? false : await user.isOwner(); S.me = null;
   const cw = await user.can("data.write"); S.canWrite = cw !== false;
-  let prof = null; try { prof = await user.me(); } catch {}
+  let prof = null; if (!STANDALONE) try { prof = await user.me(); } catch {}
   S.myEmail = (prof?.email || "").toLowerCase();
   if (prof?.name) S.names[S.account] = prof.name;
-  try { const ref = db.doc("team/"+S.account), cur = await ref.get(), d = cur.exists ? cur.data() : {}; const next = { ...d, id:S.account, joinedAt:d.joinedAt||Date.now(), displayName: prof?.name || d.displayName || "", email: S.myEmail || d.email || "" }; if (!cur.exists || next.displayName!==d.displayName || next.email!==d.email) await ref.set(next); } catch {}
-  if (S.isOwner) { try { await db.doc("config/owner").set({ ownerId:S.account }); } catch {} }
+  if (!STANDALONE) try { const ref = db.doc("team/"+S.account), cur = await ref.get(), d = cur.exists ? cur.data() : {}; const next = { ...d, id:S.account, joinedAt:d.joinedAt||Date.now(), displayName: prof?.name || d.displayName || "", email: S.myEmail || d.email || "" }; if (!cur.exists || next.displayName!==d.displayName || next.email!==d.email) await ref.set(next); } catch {}
+  if (S.isOwner && !STANDALONE) { try { await db.doc("config/owner").set({ ownerId:S.account }); } catch {} }
   const refreshNames = async () => { const ids = people().map(p=>p.id).filter(id=>!isPlaceholder(id)); if (!ids.length) return; try { const ps = await user.profiles(ids); for (const id of ids) { if (ps[id]?.name) S.names[id] = ps[id].name; if (ps[id]?.email) S.emails[id] = ps[id].email.toLowerCase(); } } catch {} };
   const seen = new Set(); const ready = (k) => { seen.add(k); if (seen.size >= 4 && !S.loaded) { S.loaded = true; clearTimeout(timer); setTimeout(generateRecurring, 800); resumeSession(); } if (S.team.get(S.account)?.removed) { $("#view").innerHTML = `<section class="card">${emptyState("shield","Your access was removed","An Admin removed you from this workspace. Ask them if this is a mistake.")}</section>`; return; } if (S.portal) render(); else if (S.loaded) showLogin(); };
   db.collection("tasks").onSnapshot(snap => { S.tasks = new Map(snap.docs.map(d => [d.id, d.data()])); S.live = true; ready("tasks"); }, () => { S.live = false; renderShell(); });
