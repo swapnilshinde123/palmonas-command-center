@@ -9,6 +9,8 @@ import { promisify } from "node:util";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createNotifier, emailInfo, previewEmail } from "./mailer.js";
+import { loadCtx, canSeeTask, validateTaskWrite, canWriteProject, canWriteSeries, permsOf, pointsAllowed, stripPoints } from "./policy.js";
+import { runRecurring } from "./jobs.js";
 
 const scrypt = promisify(scryptCb);
 const DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -175,6 +177,17 @@ async function body(req) {
   for await (const c of req) { size += c.length; if (size > 1_000_000) throw Object.assign(new Error("Too large"), { status: 413 }); chunks.push(c); }
   return chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {};
 }
+// What each person may read: tasks they can see, no KPI points for members, Admin-only audit copies.
+async function readView(col, me, rows) {
+  if (!me) return publicView(col, rows).map((r) => col === "config" ? { ...r, data: { ...r.data, kpi: undefined, kpiHistory: undefined } } : r);
+  if (!["tasks", "kpi", "config", "tombstones"].includes(col)) return rows;
+  const ctx = await loadCtx(store);
+  if (col === "tasks") return rows.filter((r) => canSeeTask(ctx, me, r.data));
+  if (col === "tombstones") return permsOf(ctx, me).purge ? rows : [];
+  if (pointsAllowed(ctx, me)) return rows;
+  if (col === "config") return rows.map((r) => ({ ...r, data: { ...r.data, kpi: undefined, kpiHistory: undefined } }));
+  return rows.map((r) => ({ ...r, data: { ...r.data, points: undefined, rows: r.data.rows ? stripPoints(r.data.rows) : undefined, previous: undefined } }));
+}
 const publicView = (col, rows) => col === "team" ? rows.map((r) => ({ ...r, data: { ...r.data, email: undefined } })) : rows;
 let indexHtml = "";
 let notifier;
@@ -252,23 +265,54 @@ const server = http.createServer(async (req, res) => {
     }
     if (kind === "col" && req.method === "GET") {
       if (!me && !PUBLIC_COLS.has(col)) return send(res, 200, { docs: [], signedOut: true });
-      const rows = await store.list(col);
-      return send(res, 200, { docs: me ? rows : publicView(col, rows) });
+      return send(res, 200, { docs: await readView(col, me, await store.list(col)) });
     }
     if (kind === "doc" && id) {
       if (!me) return send(res, 401, { error: "Sign in first." });
-      if (req.method === "GET") return send(res, 200, { doc: await store.get(col, id) });
+      if (req.method === "GET") { const d = await store.get(col, id); return send(res, 200, { doc: d ? (await readView(col, me, [d]))[0] || null : null }); }
       const adminNeeded = ADMIN_COLS.has(col) || (col === "team" && id !== me);
       if (adminNeeded && !(await isAdminUser(me))) return send(res, 403, { error: "Only an Admin can change this." });
       if (req.method === "PUT") {
-        const { data } = await body(req); if (!data || typeof data !== "object") return send(res, 400, { error: "Missing data" });
-        const prev = (col === "tasks" || col === "invitations") ? (await store.get(col, id))?.data : undefined;
+        let { data } = await body(req); if (!data || typeof data !== "object") return send(res, 400, { error: "Missing data" });
+        const prev = (await store.get(col, id))?.data;
+        if (col === "tasks" || col === "projects" || col === "recurring") {
+          const ctx = await loadCtx(store);
+          if (col === "tasks") {
+            if (data.id !== id) return send(res, 400, { error: "Task ID mismatch." });
+            const tomb = !prev && data._restoreFromTombstone ? (await store.get("tombstones", id))?.data : null;
+            if (tomb) {
+              if (!permsOf(ctx, me).purge) return send(res, 403, { error: "Only an Admin can bring back a deleted task." });
+              data = { ...tomb.task, deleted: true, restoredFromTombstoneAt: Date.now(), restoredBy: me, history: [...(tomb.task.history || []), { at: Date.now(), by: me, text: "brought the task back from a permanent delete" }] };
+              log("info", "task restored from tombstone", { taskId: id, by: me });
+            } else {
+              delete data._restoreFromTombstone;
+              if (!prev && data.parentId) data._parent = (await store.get("tasks", data.parentId))?.data || null;
+              const v = validateTaskWrite(ctx, me, prev, data);
+              if (!v.ok) { log("warn", "task write refused", { userId: me, taskId: id, error: v.error }); return send(res, v.status || 403, { error: v.error }); }
+              data = v.data;
+            }
+          } else {
+            const err = col === "projects" ? canWriteProject(ctx, me, prev, data) : canWriteSeries(ctx, me, prev, data);
+            if (err) return send(res, 403, { error: err });
+          }
+        }
         await store.put(col, id, data); broadcast(col);
         if (col === "tasks") notifier.onTask(prev, data, me).catch((e) => log("error", "notify failed", { error: e.message }));
         if (col === "invitations") notifier.onInvite(prev, data, me).catch((e) => log("error", "notify failed", { error: e.message }));
-        return send(res, 200, { ok: true });
+        return send(res, 200, { ok: true, doc: col === "tasks" ? data : undefined });
       }
-      if (req.method === "DELETE") { await store.del(col, id); broadcast(col); return send(res, 200, { ok: true }); }
+      if (req.method === "DELETE") {
+        const prev = (await store.get(col, id))?.data;
+        if (col === "tasks" || col === "projects" || col === "recurring") {
+          const P = permsOf(await loadCtx(store), me);
+          if (col === "tasks") {
+            if (!P.purge) return send(res, 403, { error: "Only an Admin can delete a task for good." });
+            if (prev && !prev.deleted && !prev.sample) return send(res, 409, { error: "Move the task to the Recycle Bin first." });
+            if (prev) { const tb = (await store.get("tombstones", id))?.data || {}; await store.put("tombstones", id, { ...tb, id, task: prev, purgedBy: me, purgedAt: Date.now() }); broadcast("tombstones"); }
+          } else if (col === "projects" ? !(P.projects_manage || P.settings_manage || prev?.ownerId === me) : !(P.recurring_manage || P.settings_manage || prev?.ownerId === me)) return send(res, 403, { error: "You can't delete this." });
+        }
+        await store.del(col, id); broadcast(col); log("info", "document deleted", { col, id, by: me }); return send(res, 200, { ok: true });
+      }
     }
     return send(res, 405, { error: "Method not allowed" });
   } catch (e) {
@@ -285,6 +329,8 @@ const server = http.createServer(async (req, res) => {
   await resetIfRequested();
   await ensureAdminEmail();
   notifier = createNotifier(store, log);
+  const tick = () => runRecurring(store, log, broadcast).catch((e) => log("error", "recurring job failed", { error: e.message }));
+  setTimeout(tick, 5000); setInterval(tick, 15 * 60000).unref();
   indexHtml = (await readFile(path.join(DIR, "public", "index.html"), "utf8")).replace("<script>", `<script>window.__PCC_GOOGLE_CLIENT_ID=${JSON.stringify(GOOGLE_CLIENT_ID)};window.__PCC_PIN_LOGIN=${PIN_LOGIN};window.__PCC_EMAIL=${JSON.stringify(emailInfo())};</script><script>`);
   server.listen(PORT, () => log("info", "listening", { port: PORT, storage: DB_URL ? "postgres" : "file", google: !!GOOGLE_CLIENT_ID, pinLogin: PIN_LOGIN, email: emailInfo().provider || "off" }));
 })().catch((e) => { log("error", "startup failed", { error: e.message }); process.exit(1); });

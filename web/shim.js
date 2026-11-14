@@ -28,7 +28,7 @@ window.__PCC_STANDALONE = true;
       const [col, id] = path.split("/");
       return {
         async get() { const c = (cache[col] || []).find((d) => d.id === id); const d = c || (await api("GET", `/api/doc/${col}/${encodeURIComponent(id)}`)).doc; return { exists: !!d, data: () => d && clone(d.data) }; },
-        async set(data) { await api("PUT", `/api/doc/${col}/${encodeURIComponent(id)}`, { data }); },
+        async set(data) { return api("PUT", `/api/doc/${col}/${encodeURIComponent(id)}`, { data }); },
         async delete() { await api("DELETE", `/api/doc/${col}/${encodeURIComponent(id)}`); },
       };
     },

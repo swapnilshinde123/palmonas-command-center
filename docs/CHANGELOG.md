@@ -23,3 +23,14 @@ Defaults chosen for the audit's open questions are marked (Q#).
 - Email: review requested / accepted / sent back.
 
 Not yet done (Phase 2 server enforcement): server-side permission checks, server timestamps, backend KPI point hiding, purge rollback UI, historical recalculation snapshots.
+
+## 2026-11-14 — Second pass on the same PDF: server enforcement and the remaining items
+
+- Server (`web/policy.js`): every task write is checked against the same roles and permissions the page uses. Members only receive the tasks they may see; deadlines change only through an approved extension; ownership only through an accepted transfer or Assign permission; requests can't be self-approved, edited or deleted; duplicates are refused; history is append-only (a stale write gets a 409); stars are personal; comments are append-only and limited to Admin/Leadership/team leaders/project leaders; all times (created, decided, completed, reviewed, escalation raised/resolved) are stamped by the server.
+- KPI points are stripped on the server for anyone without "See KPI points" (config policy, closed-month rows, deduction records).
+- Permanent delete: Admin only, task must be in the Bin, server keeps a tombstone; "Bring back" restores it and rolls back the recalculation it caused. Closed KPI months touched by a purge are recalculated with the old numbers kept.
+- KPI policy: missed-recurring deduction (default 0), custom discipline categories recorded by Admin per person and month, optional historical recalculation with preview, reason, double confirmation and rollback.
+- Recurring occurrences are created by a server job every 15 minutes (same IDs as the page).
+- Analytics page for Admin/Leadership/team leaders: delivery trend, owner scorecard, pending dependencies and their ageing, dependency-related delays, repeated blockers, cross-owner subtasks, team bottlenecks, channel patterns, escalations. Admin chooses which sections show.
+- Pending From can be changed by anyone involved in the task. KPI dependency counts include cross-owner subtasks (reporting only).
+- A newly created task now opens straight after saving.
