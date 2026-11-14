@@ -4,7 +4,7 @@ const PROVIDER = process.env.BREVO_API_KEY ? "brevo" : process.env.RESEND_API_KE
 const APP_URL = (process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/$/, "");
 const FROM = parseFrom(process.env.MAIL_FROM || "");
 const PRIO = ["Critical", "Urgent", "High", "Normal", "Low", "Backlog"];
-const STATUS = { NOT_STARTED: "Not started", IN_PROGRESS: "In progress", ON_HOLD: "On hold", COMPLETED: "Completed", DROPPED: "Dropped" };
+const STATUS = { NOT_STARTED: "To do", IN_PROGRESS: "In progress", ON_HOLD: "On hold", FOR_REVIEW: "For review", COMPLETED: "Completed", DROPPED: "Dropped" };
 const ROLE = { admin: "Admin", leadership: "Leadership", team_lead: "Team Leader", member: "Team member" };
 
 function parseFrom(v) { const m = v.match(/^\s*(.*?)\s*<\s*([^>]+)\s*>\s*$/); return m ? { name: m[1].replace(/^"|"$/g, "") || "Palmonas Command Center", email: m[2] } : { name: "Palmonas Command Center", email: v.trim() }; }
@@ -114,6 +114,9 @@ export function createNotifier(store, log) {
     if (e1?.active && (!e0?.active || e0.assignee !== e1.assignee || e0.level !== e1.level)) add([e1.assignee, next.ownerId], `[Palmonas] Escalation ${e1.level} · ${next.id}`, { eyebrow: `Escalated to ${e1.level}`, tone: "#D92D20", title: e0?.active ? `Escalation moved to ${e1.level}` : `${who} escalated a task to ${e1.level}`, intro: `Assigned to <b>${esc(dir.name(e1.assignee))}</b>. This needs someone senior to step in.`, quote: e1.reason, cta: "Open escalation" });
     if (e0?.active && e1 && !e1.active) add([next.ownerId, e0.by], `[Palmonas] Escalation resolved · ${next.id}`, { eyebrow: "Escalation resolved", tone: "#067647", title: "The escalation is resolved", quote: e1.resolution });
     if (prev && prev.status !== "COMPLETED" && next.status === "COMPLETED") add([next.createdBy], `[Palmonas] Task completed · ${next.id}`, { eyebrow: "Completed", tone: "#067647", title: `${who} completed a task you created`, intro: next.completedOn && next.completedOn <= next.deadline ? "Finished on time." : "Finished after the deadline." });
+    const r0 = prev?.review, r1 = next.review;
+    if (next.status === "FOR_REVIEW" && r1?.reviewerId && (prev?.status !== "FOR_REVIEW" || r0?.reviewerId !== r1.reviewerId)) add([r1.reviewerId], `[Palmonas] Review requested · ${next.id}`, { eyebrow: "Review requested", tone: "#7C3AED", title: `${who} sent you a task to review`, intro: "Accept it to complete the task, send it back, or pass it to someone else.", quote: r1.note || undefined });
+    if (prev?.status === "FOR_REVIEW" && next.status !== "FOR_REVIEW" && actor !== next.ownerId) add([next.ownerId], `[Palmonas] Review ${next.status === "COMPLETED" ? "accepted" : "sent back"} · ${next.id}`, { eyebrow: next.status === "COMPLETED" ? "Review accepted" : "Sent back", tone: next.status === "COMPLETED" ? "#067647" : "#B54708", title: next.status === "COMPLETED" ? `${who} accepted your work` : `${who} sent your task back`, quote: (next.reviews || []).slice(-1)[0]?.reason || undefined });
     if (prev && prev.priority !== next.priority && next.priority < prev.priority) add([next.ownerId], `[Palmonas] Priority raised · ${next.id}`, { eyebrow: "Priority changed", tone: "#B54708", title: `Priority raised to P${next.priority}`, intro: `<b>${esc(who)}</b> changed it from P${prev.priority} to P${next.priority}.` });
     if (prev && !prev.deleted && next.deleted) add([next.ownerId], `[Palmonas] Task moved to the Bin · ${next.id}`, { eyebrow: "Removed", tone: "#475467", title: "A task of yours was moved to the Recycle Bin", intro: `By <b>${esc(who)}</b>. It can be restored.`, quote: next.deletedReason, cta: null });
     for (const [to, subject, mail] of out) await send(to, subject, mail, log);

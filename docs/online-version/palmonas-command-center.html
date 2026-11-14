@@ -188,6 +188,15 @@ body.locked .app,body.locked .fab{display:none!important}
 .pcard small{display:block;color:var(--muted)}
 .pcard .lock{margin-left:auto;color:var(--faint);font-size:12px;font-weight:700;white-space:nowrap}
 .login-foot{color:var(--faint);font-size:12.5px}
+.tiles8{grid-template-columns:repeat(auto-fit,minmax(118px,1fr))!important}@media (max-width:560px){.tiles8{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+.ptog{display:grid;grid-template-columns:1fr 1fr;margin:0 0 10px}.ptog button{justify-content:center;display:flex;align-items:center;gap:6px}
+.pill.sm{height:20px;font-size:11px;padding:0 7px}.chips.rb{margin-top:5px;gap:4px}
+.st-sel{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:13px;color:var(--muted)}.st-sel select{width:auto;min-width:170px;height:38px;font-weight:700}
+.hbtns{display:flex;gap:2px;align-items:center}.hbtns .on{color:#E8A20C}.hbtns .flag-on{color:var(--red)}
+.cmt{border-left:3px solid var(--brand);padding:8px 12px;border-radius:0 10px 10px 0;background:var(--surface-2,rgba(127,127,127,.06))}
+.sub-row{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}.sub-row:first-child{border-top:0}
+.dbk{cursor:pointer}.dbk.sel{outline:2px solid var(--brand);outline-offset:-2px}
+.occ{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}.occ:first-child{border-top:0}.occ input{width:20px;height:20px}
 
 /* login v3 (right panel) */
 .login-main{overflow:hidden;isolation:isolate}
@@ -583,8 +592,9 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.6}
 const STANDALONE = !!window.__PCC_STANDALONE;
 const CHANNELS_DEFAULT = ["Amazon","Blinkit","Swiggy","Myntra","Nykaa","Flipkart","Tata CLiQ","Ajio","General"];
 const POC = { I:"Internal", WB:"Within Brand", E:"External" };
-const STATUS = { NOT_STARTED:["Not started","p-slate"], IN_PROGRESS:["In progress","p-blue"], ON_HOLD:["On hold","p-amber"], COMPLETED:["Completed","p-green"], DROPPED:["Dropped","p-slate"] };
-const ACTIVE = ["NOT_STARTED","IN_PROGRESS","ON_HOLD"];
+const STATUS = { NOT_STARTED:["To do","p-slate"], IN_PROGRESS:["In progress","p-blue"], ON_HOLD:["On hold","p-amber"], FOR_REVIEW:["For review","p-violet"], COMPLETED:["Completed","p-green"], DROPPED:["Dropped (old)","p-slate"] };
+const STATUS_PICK = ["NOT_STARTED","IN_PROGRESS","ON_HOLD","FOR_REVIEW","COMPLETED"];
+const ACTIVE = ["NOT_STARTED","IN_PROGRESS","ON_HOLD","FOR_REVIEW"];
 const ROLE_LABEL = { admin:"Admin", leadership:"Leadership", team_lead:"Team Leader", member:"Team member" };
 const ROLE_HINT = { admin:"Full control: roles, settings, purge", leadership:"Sees all tasks, approves requests", team_lead:"Runs a team: sees and approves their team's work", member:"Own tasks and tasks shared with them" };
 const ROLE_TONE = { admin:"p-violet", leadership:"p-blue", team_lead:"p-amber", member:"p-green" };
@@ -619,14 +629,14 @@ const ICONS = {
   transfer:'<path d="M4 7h14l-3-3M20 17H6l3 3"/>', sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
 };
 const ic = (k, s=18) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k]||""}</svg>`;
-const OPS = [["overview","Team overview","grid"],["tasks","All tasks","tasks"],["new","Add Task","plus"],["approvals","Approvals","approve"],["escalations","Escalations","flame"],["due","Due Soon","clock"],["pending","Pending From","hourglass"]];
-const INSIGHTS = [["projects","Projects","folder"],["channels","Channels","store"],["recurring","Recurring","repeat"],["kpi","KPI Scoreboard","gauge"],["activity","Activity log","activity"],["bin","Recycle Bin","trash"]];
+const OPS = [["overview","Team overview","grid"],["tasks","All tasks","tasks"],["recurring","Recurring tasks","repeat"],["starred","Starred","star"],["new","Add Task","plus"],["approvals","Approvals","approve"],["escalations","Escalations","flame"],["due","Due Soon","clock"],["pending","Pending From","hourglass"]];
+const INSIGHTS = [["projects","Projects","folder"],["channels","Channels","store"],["kpi","KPI Scoreboard","gauge"],["activity","Activity log","activity"],["bin","Recycle Bin","trash"]];
 const PORTAL_NAV = {
   admin: [["Administration",[["console","Admin console","settings"],["users","User management","users"],["roles","Roles & permissions","shield"],["settings","Settings","settings"],["emails","Notifications","inbox"]]],["Operations",OPS],["Insights",INSIGHTS]],
   leadership: [["Operations",OPS],["Insights",INSIGHTS],["Team",[["users","Team directory","users"],["roles","Roles & permissions","shield"]]]],
-  user: [["My work",[["mywork","My Work","grid"],["tasks","My Tasks","tasks"],["new","Add Task","plus"],["due","Due Soon","clock"],["pending","Pending From","hourglass"],["escalations","Escalations","flame"],["requests","Requests","approve"]]],["Organise",[["projects","Projects","folder"],["recurring","Recurring","repeat"],["kpi","My KPI","gauge"]]]],
+  user: [["My work",[["mywork","My Work","grid"],["tasks","My Tasks","tasks"],["recurring","Recurring tasks","repeat"],["starred","Starred","star"],["new","Add Task","plus"],["due","Due Soon","clock"],["pending","Pending From","hourglass"],["escalations","Escalations","flame"],["requests","Requests","approve"]]],["Organise",[["projects","Projects","folder"],["kpi","My KPI","gauge"],["bin","Recycle Bin","trash"]]]],
 };
-const VIEW_PERM = { console:()=>can("users_manage")||can("roles_manage")||can("settings_manage"), users:()=>can("users_manage")||wide(), settings:()=>can("settings_manage"), emails:()=>can("settings_manage"), activity:()=>can("activity_view"), bin:()=>can("bin"), approvals:()=>canApproveAny(), overview:()=>true };
+const VIEW_PERM = { console:()=>can("users_manage")||can("roles_manage")||can("settings_manage"), users:()=>can("users_manage")||wide(), settings:()=>can("settings_manage"), emails:()=>can("settings_manage"), activity:()=>can("activity_view"), bin:()=>true, approvals:()=>canApproveAny(), overview:()=>true };
 const viewOk = (v) => !VIEW_PERM[v] || VIEW_PERM[v]();
 const portalViews = (p) => new Set([...PORTAL_NAV[p].flatMap(([,items])=>items.map(i=>i[0])), "profile"]);
 const VIEWS = [
@@ -635,7 +645,7 @@ const VIEWS = [
   ["Team",[["users","User management","users"],["roles","Roles & permissions","shield"]]],
   ["Admin",[["settings","Settings","settings","admin"],["activity","Activity log","activity","priv"],["emails","Notifications","inbox","admin"]]],
 ];
-const TITLES = { mywork:"My Work", overview:"Team Overview", console:"Admin Console", requests:"Requests", home:"Command Center", tasks:"Tasks", new:"Add Task", due:"Due Soon & Follow-ups", pending:"Pending From", escalations:"Escalations", approvals:"Approvals", projects:"Projects", channels:"Channels", recurring:"Recurring tasks", kpi:"KPI Scoreboard", bin:"Recycle Bin", users:"User management", roles:"Roles & permissions", settings:"Settings", activity:"Activity log", emails:"Notifications", profile:"My profile" };
+const TITLES = { mywork:"My Work", overview:"Team Overview", console:"Admin Console", requests:"Requests", home:"Command Center", tasks:"Tasks", new:"Add Task", due:"Due Soon & Follow-ups", pending:"Pending From", escalations:"Escalations", approvals:"Approvals", projects:"Projects", channels:"Channels", recurring:"Recurring tasks", starred:"Starred tasks", kpi:"KPI Scoreboard", bin:"Recycle Bin", users:"User management", roles:"Roles & permissions", settings:"Settings", activity:"Activity log", emails:"Notifications", profile:"My profile" };
 
 // ---------- state ----------
 const S = { db:null, user:null, me:null, myEmail:"", isOwner:false, canWrite:true, tasks:new Map(), team:new Map(), roles:new Map(), projects:new Map(), recurring:new Map(), kpi:new Map(), invites:new Map(), pins:new Map(), account:null, config:{ channels:CHANNELS_DEFAULT, levels:{}, dueDays:3, followDays:2, pocs:[] }, names:{}, emails:{}, view:"home", filters:{ view:"mine", q:"", channel:"", status:"active", poc:"", priority:"", owner:"" }, open:null, live:false, loaded:false };
@@ -664,7 +674,7 @@ const PERM_GROUPS = [
   ["Approvals", [["approve_ext","Approve extensions","Move deadlines"],["approve_waiver","Approve waivers","Waive KPI penalties"],["approve_transfer","Approve transfers","Decide transfers between other people"],["approve_removal","Approve removals","Move requested tasks to the Bin"]]],
   ["Escalations & dependencies", [["esc_manage","Manage escalations","Reassign and resolve any escalation"],["poc_approve","Approve POC names","Add new POCs to the saved list"]]],
   ["Planning", [["projects_manage","Manage projects","Create and edit projects"],["recurring_manage","Manage recurring work","Create, edit, skip and pause series"]]],
-  ["Insights", [["drill","Click through team counts","Open the tasks behind dashboard numbers"],["kpi_all","See KPI scores of others","Team scoreboard (team only without 'See every task')"],["kpi_close","Close KPI months","Freeze monthly scores"],["activity_view","Activity log","See the change history"]]],
+  ["Insights", [["drill","Click through team counts","Open the tasks behind dashboard numbers"],["kpi_all","See KPI scores of others","Team scoreboard (team only without 'See every task')"],["kpi_points","See KPI points","Actual scores. Without it, people see their metrics only"],["kpi_close","Close KPI months","Freeze monthly scores"],["activity_view","Activity log","See the change history"]]],
   ["Administration", [["users_manage","Manage users","Add, edit, remove, invite, reset PINs"],["roles_manage","Manage roles & permissions","Change roles and these ticks"],["settings_manage","Workspace settings","Channels, windows, POC list"]]],
 ];
 const PERM_KEYS = PERM_GROUPS.flatMap(([,items])=>items.map(i=>i[0]));
@@ -672,8 +682,8 @@ const PERM_LABEL = Object.fromEntries(PERM_GROUPS.flatMap(([,items])=>items.map(
 const onlyKeys = (keys) => Object.fromEntries(PERM_KEYS.map(k=>[k, keys.includes(k)]));
 const ROLE_DEFAULTS = {
   admin: onlyKeys(PERM_KEYS),
-  leadership: onlyKeys(["portal_leadership","portal_user","view_all","create","assign","edit_any","star","bin","approve_ext","approve_waiver","approve_transfer","approve_removal","esc_manage","projects_manage","recurring_manage","drill","kpi_all","activity_view"]),
-  team_lead: onlyKeys(["portal_leadership","portal_user","view_team","create","assign","edit_any","approve_ext","approve_waiver","approve_transfer","recurring_manage","drill","kpi_all","activity_view"]),
+  leadership: onlyKeys(["portal_leadership","portal_user","view_all","create","assign","edit_any","star","bin","approve_ext","approve_waiver","approve_transfer","approve_removal","esc_manage","projects_manage","recurring_manage","drill","kpi_all","kpi_points","activity_view"]),
+  team_lead: onlyKeys(["portal_leadership","portal_user","view_team","create","assign","edit_any","approve_ext","approve_waiver","approve_transfer","poc_approve","recurring_manage","drill","kpi_all","activity_view"]),
   member: onlyKeys(["portal_user","create"]),
 };
 const ADMIN_ONLY = new Set(["users_manage","roles_manage","settings_manage","purge","kpi_close"]);
@@ -714,8 +724,19 @@ function people(){
 
 // Visibility mirrors the brief: Admin/Leadership see all; members see tasks they own or are involved in.
 // NOTE: applied in the page, not by a server.
-function canSee(t){ if (!t) return false; if (can("view_all")) return true; if (can("view_team") && (t.ownerId===S.me || teamOf(S.me).includes(t.ownerId))) return true; if (t.ownerId===S.me) return true; if ((t.access||[]).includes(S.me)) return true; if (t.esc?.active && levelOf(S.me)) return true; return false; }
-function timeliness(t){ const today = todayIso(); if (t.status==="DROPPED") return "DROPPED"; if (t.status==="COMPLETED") return (t.completedOn||today) <= t.deadline ? "ON_TIME" : "LATE"; return today > t.deadline ? "OVERDUE" : "OPEN"; }
+const projOf = (t) => t?.projectId ? S.projects.get(t.projectId) : null;
+const isProjLead = (t) => !!S.me && projOf(t)?.leaderId===S.me;
+const subsOf = (t) => [...S.tasks.values()].filter(c=>c.parentId===t.id && !c.deleted);
+const subDeps = (t) => subsOf(t).filter(c=>c.ownerId!==t.ownerId && ACTIVE.includes(c.status));
+const starredByMe = (t) => (t.starredBy||[]).includes(S.me);
+const ageH = (t) => { const end = t.status==="COMPLETED" ? (t.completedAt || Date.parse((t.completedOn||todayIso())+"T12:00:00Z")) : Date.now(); return Math.max(0, Math.floor((end - (t.createdAt||end))/36e5)); };
+const fmtAge = (h) => h<48 ? `${h}h` : `${h}h <small class="faint">(${Math.floor(h/24)}d)</small>`;
+const inReviewWithMe = (t) => t.status==="FOR_REVIEW" && t.review?.reviewerId===S.me;
+const canApproveT = (perm, t) => can(perm) || isProjLead(t);
+const pendingOf = (t, k) => (t[k]||[]).filter(x=>x.status==="PENDING");
+function reqBadges(t){ const b = []; if (pendingOf(t,"extensions").length) b.push(`<span class="pill p-amber sm">Extension pending</span>`); if (pendingOf(t,"waivers").length) b.push(`<span class="pill p-violet sm">Waiver pending</span>`); if (pendingOf(t,"transfers").length) b.push(`<span class="pill p-blue sm">Transfer pending</span>`); if (pendingOf(t,"removals").length) b.push(`<span class="pill p-red sm">Removal pending</span>`); if (t.status==="FOR_REVIEW") b.push(`<span class="pill p-violet sm">Review: ${esc(nameOf(t.review?.reviewerId))}</span>`); const d = subDeps(t).length; if (d) b.push(`<span class="pill p-sky sm">${d} open subtask${d>1?"s":""}</span>`); if (t.parentId) b.push(`<span class="pill p-slate sm nodot">Subtask of ${esc(t.parentId)}</span>`); return b.length ? `<div class="chips rb">${b.join("")}</div>` : ""; }
+function canSee(t){ if (!t) return false; if (can("view_all")) return true; if (isProjLead(t)) return true; if (t.review?.reviewerId===S.me) return true; if (can("view_team") && (t.ownerId===S.me || teamOf(S.me).includes(t.ownerId))) return true; if (t.ownerId===S.me) return true; if ((t.access||[]).includes(S.me)) return true; if (t.esc?.active && levelOf(S.me)) return true; return false; }
+function timeliness(t){ const today = todayIso(); if (t.status==="DROPPED") return "DROPPED"; if (t.status==="FOR_REVIEW") return (t.review?.firstSubmittedOn||today) <= t.deadline ? "OPEN" : "OVERDUE"; if (t.status==="COMPLETED") return (t.completedOn||today) <= t.deadline ? "ON_TIME" : "LATE"; return today > t.deadline ? "OVERDUE" : "OPEN"; }
 const daysLate = (t) => Math.max(0, Math.round((Date.parse(todayIso())-Date.parse(t.deadline))/864e5));
 const visibleTasks = () => [...S.tasks.values()].filter(t => !t.deleted && canSee(t));
 
@@ -815,7 +836,7 @@ function render(){
   renderShell();
   if (!S.loaded) return;
   const v = S.view, host = $("#view");
-  const fn = { mywork:viewMyWork, overview:viewHome, console:viewConsole, requests:viewRequests, home:viewHome, tasks:viewTasks, new:viewNew, due:viewDue, pending:viewPending, escalations:viewEsc, approvals:viewApprovals, projects:viewProjects, channels:viewChannels, recurring:viewRecurring, kpi:viewKpi, bin:viewBin, users:viewUsers, roles:viewRoles, settings:viewSettings, activity:viewActivity, emails:viewEmails, profile:viewProfile }[v] || viewHome;
+  const fn = { mywork:viewMyWork, overview:viewHome, console:viewConsole, requests:viewRequests, home:viewHome, tasks:viewTasks, new:viewNew, due:viewDue, pending:viewPending, escalations:viewEsc, approvals:viewApprovals, projects:viewProjects, channels:viewChannels, recurring:viewRecurring, starred:viewStarred, kpi:viewKpi, bin:viewBin, users:viewUsers, roles:viewRoles, settings:viewSettings, activity:viewActivity, emails:viewEmails, profile:viewProfile }[v] || viewHome;
   const ae = document.activeElement, keep = ae && ae.id && host.contains(ae) ? { id:ae.id, s:ae.selectionStart } : null;
   host.innerHTML = fn();
   if (v==="new") bindNew();
@@ -831,7 +852,8 @@ function renderShell(){
   document.documentElement.dataset.portal = S.portal || "";
   $("#portalLabel").textContent = S.portal ? P.label : "Ops Command";
   const many = S.me && allowedPortals().length > 1;
-  $("#portalSw").innerHTML = S.portal && many ? `<button class="portal-sw" id="portalBtn" aria-haspopup="menu"><span class="pi">${ic(P.icon,16)}</span><span style="flex:1;min-width:0"><small>Portal</small><b>${P.label}</b></span>${ic("transfer",16)}</button>` : "";
+  const lu = ["leadership","user"].filter(k=>allowedPortals().includes(k));
+  $("#portalSw").innerHTML = S.portal && many ? `${S.portal==="admin"?`<div class="portal-sw" style="cursor:default"><span class="pi">${ic(P.icon,16)}</span><span style="flex:1;min-width:0"><small>Portal</small><b>${P.label}</b></span></div>`:""}${lu.length===2?`<div class="seg ptog" role="group" aria-label="Portal">${lu.map(k=>`<button data-portal-go="${k}" aria-pressed="${S.portal===k}">${ic(PORTALS[k].icon,14)} ${PORTALS[k].short}</button>`).join("")}</div>`:""}` : "";
   const counts = S.loaded ? { approvals: approvalsFor().length, requests: visibleTasks().reduce((n,t)=>n+(t.transfers||[]).filter(x=>x.status==="PENDING"&&x.to===S.me).length,0), escalations: visibleTasks().filter(t=>t.esc?.active && t.esc.assignee===S.me).length, due: visibleTasks().filter(t=>t.ownerId===S.me && ACTIVE.includes(t.status) && t.deadline<todayIso()).length, users: realAdmin() ? [...S.invites.values()].filter(i=>inviteStatus(i)==="PENDING").length : 0 } : {};
   $("#railNew").innerHTML = S.portal && can("create") ? `<button class="rail-new" data-go="new">${ic("plus",17)}<span>New task</span><kbd>N</kbd></button>` : "";
   const fab = $("#fab"); if (fab) { fab.hidden = !(S.portal && can("create")) || S.view==="new"; if (!fab.innerHTML) fab.innerHTML = ic("plus",24); }
@@ -854,10 +876,10 @@ const prio = (p) => `<span class="prio ${p===0?"hot":p<=2?"high":""}" data-tip="
 const lvl = (t) => { const l = t.esc?.active ? t.esc.level : "L0"; return `<span class="lvl ${l}" data-tip="${l==="L0"?"Not escalated":`Escalated to ${l}`}">${l}</span>`; };
 const pocPill = (t) => t.pocType ? `<span class="pill ${t.pocType==="E"?"p-amber":t.pocType==="WB"?"p-violet":"p-sky"}">${t.pocType} · ${esc(t.pocName)}</span>` : `<span class="faint">—</span>`;
 const deadline = (t) => timeliness(t)==="OVERDUE" ? `<span class="ovd num">${fmtD(t.deadline)} · ${daysLate(t)}d late</span>` : `<span class="num">${fmtD(t.deadline)}</span>`;
-const marks = (t) => `${t.flagged?`<span class="mark-ic" style="color:var(--red)" data-tip="Flagged">${ic("flag",14)}</span>`:""}${t.starred&&can("star")?`<span class="mark-ic" style="color:#E8A20C" data-tip="Starred">${ic("star",14)}</span>`:""}`;
+const marks = (t) => `${t.flagged?`<span class="mark-ic" style="color:var(--red)" data-tip="Flagged">${ic("flag",14)}</span>`:""}${starredByMe(t)?`<span class="mark-ic" style="color:#E8A20C" data-tip="Starred">${ic("star",14)}</span>`:""}`;
 // ---------- table filters & sorting (shared by every task table) ----------
 const TF_SORTS = [["priority","Priority (urgent first)"],["deadline","Deadline (soonest)"],["deadline:desc","Deadline (latest)"],["created:desc","Newest first"],["created","Oldest first"],["name","Task name A–Z"],["owner","Owner A–Z"],["status","Status"],["channel","Channel"],["esc:desc","Escalation level"],["pending","Waiting longest"]];
-const STATUS_ORDER = { NOT_STARTED:0, IN_PROGRESS:1, ON_HOLD:2, COMPLETED:3, DROPPED:4 };
+const STATUS_ORDER = { NOT_STARTED:0, IN_PROGRESS:1, ON_HOLD:2, FOR_REVIEW:3, COMPLETED:4, DROPPED:5 };
 const tf = (key) => (S.tf ||= {})[key] ||= {};
 const tfCount = (f) => ["status","priority","channel","owner","creator"].reduce((n,k)=>n+(f[k]?.length||0),0) + ["q","project","poc","esc","due","follow","from","to","req"].filter(k=>f[k]).length + (f.flag?1:0) + (f.star?1:0);
 function applyTF(rows, f){
@@ -876,10 +898,10 @@ function applyTF(rows, f){
   if (f.to) rows = rows.filter(t=>t.deadline<=f.to);
   if (f.follow) rows = rows.filter(t=> f.follow==="due" ? t.followup && t.followup<=addDays(today,S.config.followDays) : f.follow==="set" ? !!t.followup : !t.followup);
   if (f.req) rows = rows.filter(t=>{ const p = (k)=>(t[k]||[]).some(x=>x.status==="PENDING"); return f.req==="any" ? ["extensions","waivers","transfers","removals"].some(p) : p(f.req); });
-  if (f.star) rows = rows.filter(t=>t.starred);
+  if (f.star) rows = rows.filter(starredByMe);
   if (f.sort) {
     const [k, d] = f.sort.split(":"), dir = d==="desc" ? -1 : 1, lvlN = (t)=>t.esc?.active ? +t.esc.level[1] : 0;
-    const key = { priority:t=>t.priority, deadline:t=>t.deadline, created:t=>t.createdAt||0, name:t=>t.name.toLowerCase(), owner:t=>nameOf(t.ownerId).toLowerCase(), status:t=>STATUS_ORDER[t.status], channel:t=>t.channel, esc:lvlN, pending:t=>t.pendingSince||9e15 }[k];
+    const key = { priority:t=>t.priority, deadline:t=>t.deadline, created:t=>t.createdAt||0, name:t=>t.name.toLowerCase(), owner:t=>nameOf(t.ownerId).toLowerCase(), status:t=>STATUS_ORDER[t.status], channel:t=>t.channel, esc:lvlN, pending:t=>t.pendingSince||9e15, age:ageH }[k];
     if (key) rows = [...rows].sort((a,b)=>{ const x = key(a), y = key(b); return (x<y?-1:x>y?1:0)*dir || a.priority-b.priority || a.deadline.localeCompare(b.deadline); });
   }
   return rows;
@@ -924,7 +946,7 @@ function tfPanel(key, f, all){
       ${grp("Escalation", sel("esc", [["any","Escalated (any level)"],["L1","L1"],["L2","L2"],["L3","L3"],["none","Not escalated"]], "Any"))}
       ${grp("Follow-up", sel("follow", [["due","Follow-up due"],["set","Has a follow-up"],["none","No follow-up"]], "Any"))}
       ${grp("Pending request", sel("req", [["any","Any request"],["extensions","Extension"],["waivers","Waiver"],["transfers","Transfer"],["removals","Removal"]], "Any"))}
-      ${grp("Marked", `<div class="chips"><button type="button" class="fchip ${f.flag?"on":""}" data-tft="${key}|flag" aria-pressed="${!!f.flag}">${ic("flag",13)} Flagged</button>${can("star")?`<button type="button" class="fchip ${f.star?"on":""}" data-tft="${key}|star" aria-pressed="${!!f.star}">${ic("star",13)} Starred</button>`:""}</div>`)}
+      ${grp("Marked", `<div class="chips"><button type="button" class="fchip ${f.flag?"on":""}" data-tft="${key}|flag" aria-pressed="${!!f.flag}">${ic("flag",13)} Flagged</button><button type="button" class="fchip ${f.star?"on":""}" data-tft="${key}|star" aria-pressed="${!!f.star}">${ic("star",13)} Starred by me</button></div>`)}
     </div>
     <div class="row spread" style="border-top:1px solid var(--line);padding-top:12px"><button type="button" class="btn ghost sm" data-tfclear="${key}">Clear all</button><button type="button" class="btn primary sm" data-tfclose>Show ${applyTF(all, f).length} task${applyTF(all, f).length===1?"":"s"}</button></div>
   </div>`;
@@ -933,7 +955,8 @@ function tfPanel(key, f, all){
 const COLS = {
   name: { label:"Task", sort:[["name","A → Z"],["name:desc","Z → A"],["created:desc","Newest first"],["created","Oldest first"]], fields:["q","project","creator","req","flag","star"] },
   priority: { label:"Priority", sort:[["priority","P0 first"],["priority:desc","P5 first"]], fields:["priority"] },
-  status: { label:"Status", sort:[["status","Not started first"],["status:desc","Completed first"]], fields:["status"] },
+  status: { label:"Status", sort:[["status","To do first"],["status:desc","Completed first"]], fields:["status"] },
+  age: { label:"Ageing", sort:[["age:desc","Oldest first"],["age","Newest first"]], fields:[] },
   channel: { label:"Channel", sort:[["channel","A → Z"],["channel:desc","Z → A"]], fields:["channel"] },
   owner: { label:"Owner", sort:[["owner","A → Z"],["owner:desc","Z → A"]], fields:["owner"] },
   deadline: { label:"Deadline", sort:[["deadline","Soonest first"],["deadline:desc","Latest first"]], fields:["due","from","to","follow"] },
@@ -959,7 +982,7 @@ function colPanel(key, col, f, all){
     + section("Project", radio("project", [["","Any project",all.length],["none","No project",cnt(t=>!t.projectId)], ...[...S.projects.values()].map(p=>[p.id,p.name,cnt(t=>t.projectId===p.id)])]))
     + section("Created by", checks("creator", ppl.map(p=>[p.id,p.name,cnt(t=>t.createdBy===p.id)]).filter(x=>x[2]||(f.creator||[]).includes(x[0])), true))
     + section("Pending request", radio("req", [["","Any",undefined],["any","Has a pending request",undefined],["extensions","Extension"],["waivers","Waiver"],["transfers","Transfer"],["removals","Removal"]]))
-    + section("Marked", `<div class="cf-list"><label class="cf-opt"><input type="checkbox" data-cft="${key}|flag" ${f.flag?"checked":""}><span>${ic("flag",13)} Flagged only</span><span class="faint num">${cnt(t=>t.flagged)}</span></label>${can("star")?`<label class="cf-opt"><input type="checkbox" data-cft="${key}|star" ${f.star?"checked":""}><span>${ic("star",13)} Starred only</span><span class="faint num">${cnt(t=>t.starred)}</span></label>`:""}</div>`);
+    + section("Marked", `<div class="cf-list"><label class="cf-opt"><input type="checkbox" data-cft="${key}|flag" ${f.flag?"checked":""}><span>${ic("flag",13)} Flagged only</span><span class="faint num">${cnt(t=>t.flagged)}</span></label><label class="cf-opt"><input type="checkbox" data-cft="${key}|star" ${f.star?"checked":""}><span>${ic("star",13)} Starred by me</span><span class="faint num">${cnt(starredByMe)}</span></label></div>`);
   if (col==="priority") body = section("Show priorities", checks("priority", [0,1,2,3,4,5].map(p=>[String(p),`P${p} · ${["Critical","Urgent","High","Normal","Low","Backlog"][p]}`,cnt(t=>t.priority===p)])));
   if (col==="status") body = section("Show statuses", checks("status", Object.keys(STATUS).map(s=>[s,STATUS[s][0],cnt(t=>t.status===s)])));
   if (col==="channel") body = section("Show channels", checks("channel", S.config.channels.map(c=>[c,c,cnt(t=>t.channel===c)]).filter(x=>x[2]||(f.channel||[]).includes(x[0]))));
@@ -1020,18 +1043,18 @@ function taskTable(rows, extra, emptyMsg, key=S.view+(S.filters.project?"-"+S.fi
     <div class="colbar" aria-label="Sort and filter by column">${Object.keys(COLS).map(c=>colBtn(key, f, c)).join("")}</div>${n?`<div class="tt-chips">${tfChips(key, f)}<button class="btn ghost sm" data-tfclear="${key}">${ic("x",14)} Clear all</button></div>`:""}` : "";
   if (!rows.length) return bar + (n && all.length ? emptyState("search","No tasks match these filters",`${all.length} task${all.length===1?"":"s"} hidden by filters.`,`<button class="btn" data-tfclear="${key}">Clear filters</button>`) : emptyState("tasks", emptyMsg?.[0] || "No tasks here", emptyMsg?.[1] || "Try different filters, or add a task.", emptyMsg?.[2] ?? `<button class="btn primary" data-go="new">${ic("plus",16)} Add task</button>`));
   const hc = (col) => tools ? colBtn(key, f, col) : COLS[col].label;
-  const head = `<tr><th>${hc("name")}</th>${extra?`<th>${extra[0]}</th>`:""}<th>${hc("priority")}</th><th>${hc("status")}</th><th>${hc("channel")}</th><th>${hc("owner")}</th><th>${hc("deadline")}</th><th>${hc("pending")}</th><th>${hc("esc")}</th><th><span class="sr">Actions</span></th></tr>`;
-  const body = rows.map(t => `<tr class="click" data-open="${t.id}"><td style="min-width:230px">${marks(t)}<span class="tname" style="display:inline">${esc(t.name)}</span><br><span class="tid">${t.id}</span></td>${extra?`<td>${extra[1](t)}</td>`:""}<td>${prio(t.priority)}</td><td>${statusPill(t.status)}</td><td>${esc(t.channel)}</td><td><span class="row" style="flex-wrap:nowrap;gap:8px">${avatar(t.ownerId,26)}<span style="white-space:nowrap">${esc(nameOf(t.ownerId))}</span></span></td><td style="white-space:nowrap">${deadline(t)}${t.followup?`<br><small style="color:var(--violet);font-weight:600">Follow-up ${fmtD(t.followup)}</small>`:""}</td><td>${pocPill(t)}</td><td>${lvl(t)}</td><td class="r"><button class="btn ghost icon sm" data-rowmenu="${t.id}" aria-label="Actions for ${esc(t.name)}">${ic("more",18)}</button></td></tr>`).join("");
-  const mob = rows.map(t => `<button class="mcard" data-open="${t.id}"><span class="row spread" style="flex-wrap:nowrap;align-items:flex-start"><span style="min-width:0">${marks(t)}<span class="tname" style="display:inline">${esc(t.name)}</span><br><span class="tid">${t.id}</span></span>${prio(t.priority)}</span><span class="chips" style="margin:8px 0 6px">${statusPill(t.status)} ${t.esc?.active?lvl(t):""} ${t.pocType?pocPill(t):""}</span><small class="muted">${esc(t.channel)} · ${esc(nameOf(t.ownerId))} · ${deadline(t)}${extra?` · ${extra[1](t)}`:""}</small></button>`).join("");
+  const head = `<tr><th>${hc("name")}</th>${extra?`<th>${extra[0]}</th>`:""}<th>${hc("priority")}</th><th>${hc("status")}</th><th>${hc("age")}</th><th>${hc("channel")}</th><th>${hc("owner")}</th><th>${hc("deadline")}</th><th>${hc("pending")}</th><th>${hc("esc")}</th><th><span class="sr">Actions</span></th></tr>`;
+  const body = rows.map(t => `<tr class="click" data-open="${t.id}"><td style="min-width:230px">${marks(t)}<span class="tname" style="display:inline">${esc(t.name)}</span><br><span class="tid">${t.id}</span>${reqBadges(t)}</td>${extra?`<td>${extra[1](t)}</td>`:""}<td>${prio(t.priority)}</td><td>${statusPill(t.status)}</td><td class="num" style="white-space:nowrap">${fmtAge(ageH(t))}</td><td>${esc(t.channel)}</td><td><span class="row" style="flex-wrap:nowrap;gap:8px">${avatar(t.ownerId,26)}<span style="white-space:nowrap">${esc(nameOf(t.ownerId))}</span></span></td><td style="white-space:nowrap">${deadline(t)}${t.followup?`<br><small style="color:var(--violet);font-weight:600">Follow-up ${fmtD(t.followup)}</small>`:""}</td><td>${pocPill(t)}</td><td>${lvl(t)}</td><td class="r"><button class="btn ghost icon sm" data-rowmenu="${t.id}" aria-label="Actions for ${esc(t.name)}">${ic("more",18)}</button></td></tr>`).join("");
+  const mob = rows.map(t => `<button class="mcard" data-open="${t.id}"><span class="row spread" style="flex-wrap:nowrap;align-items:flex-start"><span style="min-width:0">${marks(t)}<span class="tname" style="display:inline">${esc(t.name)}</span><br><span class="tid">${t.id}</span></span>${prio(t.priority)}</span><span class="chips" style="margin:8px 0 6px">${statusPill(t.status)} ${t.esc?.active?lvl(t):""} ${t.pocType?pocPill(t):""}</span>${reqBadges(t)}<small class="muted">${esc(t.channel)} · ${esc(nameOf(t.ownerId))} · ${deadline(t)} · age ${ageH(t)}h${extra?` · ${extra[1](t)}`:""}</small></button>`).join("");
   return bar + `<div class="tbl-wrap desk"><table>${head}${body}</table></div><div class="mlist">${mob}</div>`;
 }
 function rowMenu(btn, t){
   const p = can("edit_any"), own = t.ownerId===S.me;
   const items = [{ key:"open", label:"Open task", icon:"open", run:()=>{ S.open=t.id; renderSheet(); } }];
   if (own || p) items.push({ key:"flag", label:t.flagged?"Remove flag":"Flag", icon:"flag", run:()=>act("flag",t) });
-  if (can("star")) items.push({ key:"star", label:t.starred?"Unstar":"Star", icon:"star", run:()=>act("star",t) });
+  items.push({ key:"star", label:starredByMe(t)?"Unstar":"Star", icon:"star", run:()=>act("star",t) });
   if (own || p) items.push({ key:"edit", label:"Edit details", icon:"edit", run:()=>act("edit",t) });
-  if ((own || p) && !t.deleted) items.push("-", { key:"bin", label:can("bin")?"Move to Recycle Bin":"Request removal", icon:"trash", danger:true, run:()=>act("bin",t) });
+  if ((own || p) && !t.deleted) items.push("-", { key:"bin", label:canBinT(t)?"Move to Recycle Bin":"Request removal", icon:"trash", danger:true, run:()=>act("bin",t) });
   openMenu(btn, items);
 }
 // Compact filter row for non-task tables; values live in S.filters.
@@ -1062,38 +1085,51 @@ function breakdown(title, sub, icon, rows, filterKey, avatars){
   ${rows.length?`<div class="tbl-wrap"><table><tr><th>${title.replace("By ","")}</th><th class="r">Active</th><th style="width:34%"><span class="sr">Distribution</span></th><th class="r">Overdue</th><th class="r">Due soon</th><th class="r">Done (month)</th></tr>${rows.map(r=>{ const other = Math.max(0,r.active-r.overdue-r.soon);
     return `<tr ${drill?`class="click" data-drill="${filterKey}:${esc(r.key)}" title="Show these tasks"`:""}><td><span class="row" style="flex-wrap:nowrap;gap:9px">${avatars?avatar(r.key,26):""}<b style="white-space:nowrap">${esc(r.label)}</b></span></td><td class="r num"><b>${r.active}</b></td><td><div class="bar" style="width:${Math.max(6,r.active/max*100)}%"><i style="flex:${r.overdue};background:var(--red)"></i><i style="flex:${r.soon};background:#F2B53A"></i><i style="flex:${other};background:var(--brand)"></i></div></td><td class="r num ${r.overdue?"ovd":"faint"}">${r.overdue}</td><td class="r num">${r.soon}</td><td class="r num">${r.done}</td></tr>`;}).join("")}</table></div>`:emptyState("grid","No tasks yet","Counts appear once tasks are added.")}</section>`;
 }
+function tileSet(list, scope){
+  const today = todayIso(), soonD = addDays(today, S.config.dueDays), fu = addDays(today, S.config.followDays);
+  const act = list.filter(t=>ACTIVE.includes(t.status));
+  return [
+    ["Active", act.length, "tasks", "t-blue", ""],
+    ["Overdue", act.filter(t=>t.deadline<today && t.status!=="FOR_REVIEW").length, "alert", "t-red", "overdue"],
+    [`Due in ${S.config.dueDays} days`, act.filter(t=>t.deadline>=today && t.deadline<=soonD).length, "clock", "t-amber", "week"],
+    ["Follow-ups due", act.filter(t=>t.followup && t.followup<=fu).length, "calendar", "t-violet", ""],
+    ["Waiting on others", act.filter(t=>t.pocType || subDeps(t).length).length, "hourglass", "t-sky", ""],
+    ["Escalated", act.filter(t=>t.esc?.active).length, "flame", "t-amber", ""],
+    ["In review", act.filter(t=>t.status==="FOR_REVIEW").length, "approve", "t-violet", ""],
+    ["Done this month", list.filter(t=>t.status==="COMPLETED" && (t.completedOn||"").startsWith(today.slice(0,7))).length, "check", "t-green", ""],
+  ].map(([l,n,i,tone,due]) => `<button class="stat" data-tile="${scope}|${l}|${due}"><span class="sic ${tone}">${ic(i,18)}</span><b>${n}</b><span>${l}</span></button>`).join("");
+}
 function viewHome(){
-  const today = todayIso(), mine = visibleTasks().filter(t => t.ownerId===S.me && ACTIVE.includes(t.status));
-  const all = buckets(()=>"all",()=>"Team")[0] || { active:0, overdue:0, soon:0, done:0 };
-  const stat = (n,l,go,icon,tone) => `<a class="stat" href="#${go}"><span class="sic ${tone}">${ic(icon,18)}</span><b>${n}</b><span>${l}</span></a>`;
-  const myEsc = visibleTasks().filter(t => t.esc?.active && (t.ownerId===S.me || t.esc.assignee===S.me)).length;
-  const overdueMine = mine.filter(t=>t.deadline<today).sort((a,b)=>a.deadline.localeCompare(b.deadline));
-  const appr = approvalsFor();
-  const attention = [...overdueMine.slice(0,4).map(t=>({ t, why:`<span class="pill p-red">${daysLate(t)}d overdue</span>` })), ...appr.slice(0,4).map(a=>({ t:a.t, why:`<span class="pill p-amber">${{transfer:"Transfer",extension:"Extension",waiver:"Waiver",removal:"Removal"}[a.kind]} to decide</span>` }))];
+  const today = todayIso(), mineAll = visibleTasks().filter(t => t.ownerId===S.me), mine = mineAll.filter(t=>ACTIVE.includes(t.status));
+  const teamAll = can("view_all") ? [...S.tasks.values()].filter(t=>!t.deleted && t.status!=="DROPPED") : visibleTasks().filter(t=>t.status!=="DROPPED");
+  const overdueMine = mine.filter(t=>t.deadline<today && t.status!=="FOR_REVIEW").sort((a,b)=>a.deadline.localeCompare(b.deadline));
+  const appr = approvalsFor(), reviews = visibleTasks().filter(inReviewWithMe);
+  const attention = [...overdueMine.slice(0,4).map(t=>({ t, why:`<span class="pill p-red">${daysLate(t)}d overdue</span>` })), ...reviews.map(t=>({ t, why:`<span class="pill p-violet">Review it</span>` })), ...appr.slice(0,6).map(a=>({ t:a.t, why:`<span class="pill p-amber">${{transfer:"Transfer",extension:"Extension",waiver:"Waiver",removal:"Removal"}[a.kind]} to decide</span>` }))];
   const recent = visibleTasks().flatMap(t => (t.history||[]).map(h => ({ ...h, t }))).sort((a,b)=>b.at-a.at).slice(0,8);
-  return `${!S.canWrite?`<div class="notice">${ic("info",16)}You can view this workspace but not change it. Ask the owner for access that lets you use the page.</div>`:""}
+  return `${!S.canWrite?`<div class="notice">${ic("info",16)}You can view this workspace but not change it.</div>`:""}
     <div class="toolbar hello"><div><h2>${greeting()}, ${esc(nameOf(S.me).split(" ")[0])}</h2><p>${new Date(Date.now()+330*60000).toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",timeZone:"UTC"})} · ${mine.length?`You have ${mine.length} active task${mine.length>1?"s":""}${overdueMine.length?`, ${overdueMine.length} overdue`:""}.`:"Nothing on your plate right now."}</p></div><div class="row"><a class="btn" href="#tasks">${ic("tasks",16)} My tasks</a><button class="btn primary" data-go="new">${ic("plus",16)} Add task</button></div></div>
-    <div class="stats">
-      ${stat(mine.length,"My active tasks","tasks","tasks","t-blue")}
-      ${stat(mine.filter(t=>t.deadline<=addDays(today,S.config.dueDays)).length,"Due soon (incl. overdue)","due","clock","t-red")}
-      ${stat(mine.filter(t=>t.followup && t.followup<=addDays(today,S.config.followDays)).length,"Follow-ups due","due","calendar","t-violet")}
-      ${stat(mine.filter(t=>t.pocType).length,"Waiting on others","pending","hourglass","t-sky")}
-      ${stat(myEsc,"Escalations","escalations","flame","t-amber")}
-      ${stat(appr.length, canApproveAny()?"Awaiting your decision":"Transfers to accept","approvals","approve","t-green")}
-    </div>
-    <section class="band" aria-label="Team totals"><div><b>${all.active}</b><span>Active tasks</span></div><div><b>${all.overdue}</b><span>Overdue</span></div><div><b>${all.soon}</b><span>Due in ${S.config.dueDays} days</span></div><div><b>${all.done}</b><span>Completed this month</span></div>${can("drill")?`<p>Click any row below to see those tasks.</p>`:`<p>Team counts are a summary. Task details open only for work you own or are involved in.</p>`}</section>
-    ${attention.length?`<section class="card"><div class="card-h"><div><h2>${ic("alert",18)}Needs your attention</h2><p>Your overdue work and decisions waiting on you.</p></div></div><div class="pad" style="display:grid;gap:4px;padding-top:6px">${attention.map(a=>`<button class="mcard" style="border:1px solid var(--line);border-radius:12px;margin-bottom:6px" data-open="${a.t.id}"><span class="row spread"><span style="min-width:0"><b>${esc(a.t.name)}</b> <span class="tid">${a.t.id}</span></span>${a.why}</span></button>`).join("")}</div></section>`:""}
+    <section class="card"><div class="card-h"><div><h2>${ic("user",18)}Your work</h2><p>Tasks you own. Click a tile to open them.</p></div></div><div class="pad" style="padding-top:4px"><div class="stats tiles8">${tileSet(mineAll,"mine")}</div></div></section>
+    <section class="card"><div class="card-h"><div><h2>${ic("users",18)}${can("view_all")?"Whole team":"Your team"}</h2><p>The same tiles for ${can("view_all")?"everyone's":"your team's"} tasks${can("drill")?". Click a tile to open them":""}.</p></div></div><div class="pad" style="padding-top:4px"><div class="stats tiles8">${tileSet(teamAll,"team")}</div></div></section>
+    ${attention.length?`<section class="card"><div class="card-h"><div><h2>${ic("alert",18)}Needs your attention</h2><p>Your overdue work, reviews and decisions waiting on you.</p></div></div><div class="pad" style="display:grid;gap:4px;padding-top:6px">${attention.map(a=>`<button class="mcard" style="border:1px solid var(--line);border-radius:12px;margin-bottom:6px" data-open="${a.t.id}"><span class="row spread"><span style="min-width:0"><b>${esc(a.t.name)}</b> <span class="tid">${a.t.id}</span></span>${a.why}</span></button>`).join("")}</div></section>`:""}
     ${(()=>{ const risk = visibleTasks().filter(t=>ACTIVE.includes(t.status) && t.priority<=1 && (t.deadline<=addDays(today,1) || t.esc?.active)).sort((a,b)=>a.priority-b.priority||a.deadline.localeCompare(b.deadline)); return priv() && risk.length ? `<section class="card"><div class="card-h"><div><h2>${ic("flame",18)}At risk</h2><p>P0 and P1 work that is overdue, due within a day, or escalated.</p></div></div>${taskTable(risk, null, null, null)}</section>` : ""; })()}
     ${breakdown("By owner","Active work per person.","users",buckets(t=>t.ownerId,nameOf),"owner",true)}
     <div class="grid2">${breakdown("By channel","Marketplace load.","store",buckets(t=>t.channel,k=>k),"channel")}${breakdown("By priority","P0 is the most urgent.","flame",buckets(t=>"P"+t.priority,k=>k).sort((a,b)=>a.key.localeCompare(b.key,undefined,{numeric:true})),"priority")}</div>
     <section class="card"><div class="card-h"><div><h2>${ic("activity",18)}Recent activity</h2><p>Changes on tasks you can see.</p></div>${can("activity_view")?`<a class="btn sm ghost" href="#activity">View all</a>`:""}</div>${recent.length?`<div class="pad" style="display:grid;gap:12px">${recent.map(r=>`<div class="row spread" style="flex-wrap:nowrap;align-items:flex-start"><span class="row" style="flex-wrap:nowrap;align-items:flex-start;gap:10px;min-width:0">${avatar(r.by,28)}<span style="min-width:0"><b>${esc(nameOf(r.by))}</b> ${esc(r.text)}<br><a href="#home" data-open="${r.t.id}" style="color:var(--brand);font-weight:700;text-decoration:none">${esc(r.t.name)}</a></span></span><small class="faint" style="white-space:nowrap">${ago(r.at)}</small></div>`).join("")}</div>`:emptyState("activity","No activity yet","Add the first task to get started.")}</section>`;
+}
+function viewStarred(){
+  const F = S.filters, all = can("view_all") || wide();
+  const by = all ? (F.starBy ?? S.me) : S.me;
+  let rows = visibleTasks().filter(t=>(t.starredBy||[]).length && (!by || (t.starredBy||[]).includes(by)));
+  const starrers = [...new Set(visibleTasks().flatMap(t=>t.starredBy||[]))];
+  return `<div class="toolbar"><p class="lead">${all?"Stars are personal. Pick whose stars to see.":"Tasks you've starred. Star any task from its detail panel."}</p>${all?`<select data-fs="starBy" aria-label="Starred by" style="width:auto"><option value="" ${by===""?"selected":""}>Starred by anyone</option>${starrers.map(id=>`<option value="${id}" ${by===id?"selected":""}>${id===S.me?"Me":esc(nameOf(id))}</option>`).join("")}${starrers.includes(S.me)?"":`<option value="${S.me}" ${by===S.me?"selected":""}>Me</option>`}</select>`:""}</div>
+  <section class="card">${taskTable(rows.sort((a,b)=>a.priority-b.priority||a.deadline.localeCompare(b.deadline)), all?["Starred by", t=>(t.starredBy||[]).map(id=>esc(nameOf(id))).join(", ")]:null, ["No starred tasks","Open a task and click the star to keep it here.",""], "starred")}</section>`;
 }
 
 // ---------- tasks ----------
 function filtered(){
   const f = S.filters;
   let rows = visibleTasks();
-  if (f.view==="mine") rows = rows.filter(t=>t.ownerId===S.me);
+  if (f.view==="mine") rows = rows.filter(t=>t.ownerId===S.me || inReviewWithMe(t));
   if (f.view==="shared") rows = rows.filter(t=>t.ownerId!==S.me);
   if (f.status==="active") rows = rows.filter(t=>ACTIVE.includes(t.status)); else if (f.status) rows = rows.filter(t=>t.status===f.status);
   if (f.flag) rows = rows.filter(t=>t.flagged);
@@ -1102,7 +1138,7 @@ function filtered(){
 function viewTasks(){
   const f = S.filters, rows = filtered();
   const seg = (k, opts) => `<div class="seg" role="group">${opts.map(([v,l])=>`<button data-f="${k}" data-v="${v}" aria-pressed="${f[k]===v}">${l}</button>`).join("")}</div>`;
-  return `<div class="toolbar">${seg("view",[["mine","My tasks"],["shared","Shared with me"],...(wide()?[["team",can("view_all")?"All team":"My team"]]:[])])}${seg("status",[["active","Open"],["COMPLETED","Completed"],["DROPPED","Dropped"],["","All"]])}</div>
+  return `<div class="toolbar">${seg("view",[["mine","My tasks"],["shared","Shared with me"],...(wide()?[["team",can("view_all")?"All team":"My team"]]:[])])}${seg("status",[["active","Open"],["FOR_REVIEW","For review"],["COMPLETED","Completed"],["","All"]])}</div>
   <section class="card">
     ${taskTable(rows, null, null, "tasks")}
   </section>`;
@@ -1125,7 +1161,8 @@ function viewNew(){
         <label class="check"><input type="checkbox" id="nPending"><span><b>Waiting on someone (Pending From)</b><br><small class="muted">Tick if the task is blocked on a person or team. It then shows on Pending From. This doesn't escalate it.</small></span></label>
         <div id="pendBox" hidden style="margin-top:14px;display:grid;gap:12px">
           <div class="f">POC type *<div class="radios" id="nPoc" role="radiogroup">${Object.entries(POC).map(([k,v])=>`<button type="button" role="radio" aria-checked="false" data-poc="${k}">${v}<small>${{I:"Another Palmonas team",WB:"Brand-side team",E:"Marketplace or vendor"}[k]}</small></button>`).join("")}</div><span class="err" id="ePoc"></span></div>
-          <label class="f">POC name *<input type="text" id="nPocName" list="pocList" placeholder="e.g. Amazon Seller Support"><datalist id="pocList">${savedPocs().map(p=>`<option value="${esc(p)}">`).join("")}</datalist><span class="err" id="ePocName"></span></label>
+          <label class="f" id="wPocName">POC name *<input type="text" id="nPocName" list="pocList" placeholder="e.g. Amazon Seller Support"><datalist id="pocList">${savedPocs().map(p=>`<option value="${esc(p)}">`).join("")}</datalist><small>New names go to an Admin or team leader to check. Your task carries on meanwhile.</small><span class="err" id="ePocName"></span></label>
+          <label class="f" id="wPocMember" hidden>Team member *<select id="nPocMember"><option value="">Pick a person</option>${people().filter(p=>p.id!==S.me).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select><span class="err" id="ePocMember"></span></label>
         </div>
       </div>
     </div></div>
@@ -1137,14 +1174,14 @@ function bindNew(){
   let prioV = 3, pocV = "";
   const form = $("#newForm");
   $("#nPrio").onclick = (e) => { const b = e.target.closest("[data-p]"); if (!b) return; prioV = +b.dataset.p; [...$("#nPrio").children].forEach(x=>x.setAttribute("aria-checked", x===b)); };
-  $("#nPoc").onclick = (e) => { const b = e.target.closest("[data-poc]"); if (!b) return; pocV = b.dataset.poc; [...$("#nPoc").children].forEach(x=>x.setAttribute("aria-checked", x===b)); $("#ePoc").textContent=""; };
+  $("#nPoc").onclick = (e) => { const b = e.target.closest("[data-poc]"); if (!b) return; pocV = b.dataset.poc; [...$("#nPoc").children].forEach(x=>x.setAttribute("aria-checked", x===b)); $("#ePoc").textContent=""; $("#wPocName").hidden = pocV==="I"; $("#wPocMember").hidden = pocV!=="I"; };
   $("#nPending").onchange = (e) => { $("#pendBox").hidden = !e.target.checked; };
   $("#nOwner").onchange = (e) => { $("#hOwner").textContent = e.target.value!==S.me && !can("assign") ? "They'll get a transfer request. The task stays with you until they accept." : ""; };
   form.addEventListener("input", (e) => { e.target.removeAttribute?.("aria-invalid"); const m = { nName:"eName", nChannel:"eChannel", nDeadline:"eDeadline", nPocName:"ePocName" }[e.target.id]; if (m) $("#"+m).textContent=""; $("#eForm").textContent=""; });
   form.onsubmit = async (e) => {
     e.preventDefault();
-    const name = $("#nName").value.trim(), ch = $("#nChannel").value, owner = $("#nOwner").value, dl = $("#nDeadline").value, pend = $("#nPending").checked, pocName = $("#nPocName").value.trim();
-    const errs = { eName:[ "nName", name.length<3 ? "Give the task a name of at least 3 characters." : ""], eChannel:["nChannel", ch ? "" : "Pick a channel. Use General if it isn't marketplace-specific."], eDeadline:["nDeadline", !dl ? "Pick a deadline." : dl < todayIso() ? "The deadline can't be in the past." : ""], ePoc:[null, pend && !pocV ? "Pick a POC type." : ""], ePocName:["nPocName", pend && !pocName ? "POC name is required when the task is pending." : ""] };
+    const name = $("#nName").value.trim(), ch = $("#nChannel").value, owner = $("#nOwner").value, dl = $("#nDeadline").value, pend = $("#nPending").checked, pocMem = $("#nPocMember").value, pocName = pocV==="I" ? (pocMem?nameOf(pocMem):"") : $("#nPocName").value.trim();
+    const errs = { eName:[ "nName", name.length<3 ? "Give the task a name of at least 3 characters." : ""], eChannel:["nChannel", ch ? "" : "Pick a channel. Use General if it isn't marketplace-specific."], eDeadline:["nDeadline", !dl ? "Pick a deadline." : dl < todayIso() ? "The deadline can't be in the past." : ""], ePoc:[null, pend && !pocV ? "Pick a POC type." : ""], ePocName:["nPocName", pend && pocV!=="I" && !pocName ? "POC name is required when the task is pending." : ""], ePocMember:["nPocMember", pend && pocV==="I" && !pocMem ? "Pick the team member." : ""] };
     let first = null;
     for (const [k,[inp,msg]] of Object.entries(errs)) { $("#"+k).textContent = msg ? msg : ""; if (inp) msg ? $("#"+inp).setAttribute("aria-invalid","true") : $("#"+inp).removeAttribute("aria-invalid"); if (msg && !first) first = inp ? $("#"+inp) : $("#nPoc button"); }
     if (first) { $("#eForm").innerHTML = `${ic("alert",15)} Some fields need attention.`; first.focus(); return; }
@@ -1152,7 +1189,7 @@ function bindNew(){
     const code = (nameOf(S.me).replace(/[^A-Za-z]/g,"").toUpperCase()+"XXX").slice(0,3);
     const id = `${code}-${todayIso().replace(/-/g,"").slice(2)}-${uid().slice(0,4).toUpperCase()}`;
     const peer = owner!==S.me && !can("assign");
-    const t = { id, name, channel:ch, ownerId: peer ? S.me : owner, createdBy:S.me, priority:prioV, status:"NOT_STARTED", deadline:dl, originalDeadline:dl, followup:$("#nFollow").value||null, description:$("#nDesc").value.trim(), projectId:$("#nProject").value||null, pocType: pend?pocV:null, pocName: pend?pocName:null, pendingSince: pend?Date.now():null, flagged:false, starred:false, deleted:false, access:[], extensions:[], waivers:[], transfers:[], removals:[], createdAt:Date.now(), history:[] };
+    const t = { id, name, channel:ch, ownerId: peer ? S.me : owner, createdBy:S.me, priority:prioV, status:"NOT_STARTED", deadline:dl, originalDeadline:dl, followup:$("#nFollow").value||null, description:$("#nDesc").value.trim(), projectId:$("#nProject").value||null, pocType: pend?pocV:null, pocName: pend?pocName:null, pocMemberId: pend&&pocV==="I"?pocMem:null, pendingSince: pend?Date.now():null, flagged:false, starredBy:[], deleted:false, access:[], extensions:[], waivers:[], transfers:[], removals:[], createdAt:Date.now(), history:[] };
     grant(t, S.me);
     if (peer) { t.transfers.push({ id:uid(), from:S.me, to:owner, by:S.me, reason:"Created for you", status:"PENDING", at:Date.now() }); grant(t, owner); }
     const ok = await saveTask(t, `created the task${!peer && owner!==S.me?` and assigned it to ${nameOf(owner)}`:""}${peer?` and asked ${nameOf(owner)} to take it`:""}`);
@@ -1170,27 +1207,50 @@ function recurringFollowups(){
   }
   return out.sort((a,b)=>a.date.localeCompare(b.date));
 }
+function dueBucket(t){
+  const today = todayIso(), d = new Date(today+"T00:00:00Z"), dow = (d.getUTCDay()+6)%7, weekEnd = addDays(today, 6-dow), monthEnd = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth()+1, 0)).toISOString().slice(0,10);
+  if (t.deadline < today) return "overdue"; if (t.deadline===today) return "today"; if (t.deadline===addDays(today,1)) return "tomorrow"; if (t.deadline<=weekEnd) return "week"; if (t.deadline<=monthEnd) return "month"; return "later";
+}
+const DUE_B = [["overdue","Overdue","alert","t-red"],["today","Due today","clock","t-amber"],["tomorrow","Due tomorrow","calendar","t-blue"],["week","Later this week","calendar","t-sky"],["month","Later this month","calendar","t-violet"],["later","After this month","calendar","t-slate"]];
 function viewDue(){
-  const today = todayIso(), dl = addDays(today,S.config.dueDays), fu = addDays(today,S.config.followDays);
-  const base = visibleTasks().filter(t => ACTIVE.includes(t.status) && (S.filters.dueTeam && wide() ? true : t.ownerId===S.me));
-  const rows = base.filter(t => t.deadline<=dl || (t.followup && t.followup<=fu));
-  const why = (t) => { const r=[]; if (t.deadline<today) r.push(`<span class="pill p-red">Overdue</span>`); else if (t.deadline<=dl) r.push(`<span class="pill p-amber">Deadline approaching</span>`); if (t.followup && t.followup<=fu) r.push(`<span class="pill p-violet">Follow-up ${t.followup<today?"overdue":"due"}</span>`); return r.join(" "); };
+  const today = todayIso(), fu = addDays(today,S.config.followDays), pick = S.filters.dueB || "";
+  const base = visibleTasks().filter(t => ACTIVE.includes(t.status) && t.status!=="FOR_REVIEW" && (S.filters.dueTeam && wide() ? true : t.ownerId===S.me));
+  const cnt = (k) => base.filter(t=>dueBucket(t)===k).length, fol = base.filter(t=>t.followup && t.followup<=fu);
+  const rows = pick==="follow" ? fol : base.filter(t=>!pick || dueBucket(t)===pick);
+  const why = (t) => { const k = dueBucket(t), r = [`<span class="pill ${{overdue:"p-red",today:"p-amber",tomorrow:"p-blue"}[k]||"p-slate"}">${DUE_B.find(x=>x[0]===k)[1]}</span>`]; if (t.followup && t.followup<=fu) r.push(`<span class="pill p-violet">Follow-up ${t.followup<today?"overdue":"due"}</span>`); return r.join(" "); };
   const rf = recurringFollowups();
-  return `<div class="toolbar"><p class="lead">Deadlines in the next ${S.config.dueDays} days and follow-ups in the next ${S.config.followDays} days. Overdue work stays here until it's done.</p>${priv()?`<div class="seg"><button data-due="0" aria-pressed="${!S.filters.dueTeam}">Mine</button><button data-due="1" aria-pressed="${!!S.filters.dueTeam}">Whole team</button></div>`:""}</div>
-  <section class="card">${taskTable(rows.sort((a,b)=>a.deadline.localeCompare(b.deadline)), ["Why it's here", why], ["You're all clear","Nothing is due soon. Nice work.",""])}</section>
+  return `<div class="toolbar"><p class="lead">Every open task by due date. Weeks run Monday to Sunday (IST). Click a tile to filter.</p>${priv()?`<div class="seg"><button data-due="0" aria-pressed="${!S.filters.dueTeam}">Mine</button><button data-due="1" aria-pressed="${!!S.filters.dueTeam}">Whole team</button></div>`:""}</div>
+  <div class="stats tiles8">${DUE_B.map(([k,l,i,tone])=>`<button class="stat dbk ${pick===k?"sel":""}" data-dueb="${k}" aria-pressed="${pick===k}"><span class="sic ${tone}">${ic(i,18)}</span><b>${cnt(k)}</b><span>${l}</span></button>`).join("")}<button class="stat dbk ${pick==="follow"?"sel":""}" data-dueb="follow" aria-pressed="${pick==="follow"}"><span class="sic t-violet">${ic("refresh",18)}</span><b>${fol.length}</b><span>Follow-ups due</span></button></div>
+  ${pick?`<div class="row"><span class="pill p-blue">Showing: ${pick==="follow"?"Follow-ups due":DUE_B.find(x=>x[0]===pick)[1]}</span><button class="btn ghost sm" data-dueb="">${ic("x",14)} Show all</button></div>`:""}
+  <section class="card">${taskTable(rows.sort((a,b)=>a.deadline.localeCompare(b.deadline)||a.priority-b.priority), ["When", why], ["You're all clear","Nothing open here.",""], "due")}</section>
   ${rf.length?`<section class="card"><div class="card-h"><div><h2>${ic("repeat",18)}Recurring follow-ups</h2><p>Paused or skipped series that need a check.</p></div><a class="btn sm ghost" href="#recurring">Open Recurring</a></div><div class="pad" style="display:grid;gap:10px">${rf.map(x=>`<div class="row spread"><span><b>${esc(x.s.title)}</b> · <span class="pill p-amber">${esc(x.kind)}</span> <small class="muted">${esc(x.note||"")}</small></span><small class="${x.date<today?"ovd":"muted"}">Follow-up ${fmtD(x.date)}</small></div>`).join("")}</div></section>`:""}`;
 }
 function viewPending(){
   const f = S.filters.pendType || "";
-  const base = visibleTasks().filter(t => ACTIVE.includes(t.status) && t.pocType);
-  const n = (k) => base.filter(t=>!k||t.pocType===k).length;
-  const saved = new Set(S.config.pocs||[]);
-  const custom = [...new Set([...S.tasks.values()].filter(t=>!t.deleted && t.pocName && !saved.has(t.pocName)).map(t=>t.pocName))].sort();
-  const canApprove = levelOf(S.me)==="L1" || can("poc_approve");
-  return `<p class="lead">What we're waiting for, and from whom. This is a dependency map; it doesn't escalate anything.</p>
+  const base = visibleTasks().filter(t => ACTIVE.includes(t.status) && (t.pocType || subDeps(t).length));
+  const typeOf = (t) => t.pocType || "I";
+  const n = (k) => base.filter(t=>!k||typeOf(t)===k).length;
+  const saved = new Set(S.config.pocs||[]), rejected = new Set(S.config.pocRejected||[]);
+  const custom = [...new Set([...S.tasks.values()].filter(t=>!t.deleted && t.pocName && t.pocType && t.pocType!=="I" && !saved.has(t.pocName) && !rejected.has(t.pocName)).map(t=>t.pocName))].sort();
+  const canApprove = hasPerm(S.me,"poc_approve") && realRole()!=="leadership";
+  const waitOn = (t) => [t.pocType?`<b>${esc(t.pocName)}</b><br><small class="muted">${POC[t.pocType]} · ${t.pendingSince?ago(t.pendingSince):"—"}</small>`:"", ...subDeps(t).map(c=>`<b>${esc(nameOf(c.ownerId))}</b><br><small class="muted">Subtask: ${esc(c.name)} · clears when done</small>`)].filter(Boolean).join("<br>");
+  return `<p class="lead">What we're waiting for, and from whom. Open subtasks owned by someone else show here automatically and clear when they're done. Nothing here escalates.</p>
   <div class="stats" style="grid-template-columns:repeat(4,minmax(0,1fr))">${[["","All","hourglass","t-blue"],["I","Internal","users","t-sky"],["WB","Within Brand","store","t-violet"],["E","External","send","t-amber"]].map(([k,l,i,tone])=>`<button class="stat ${f===k?"sel":""}" data-pend="${k}" aria-pressed="${f===k}"><span class="sic ${tone}">${ic(i,18)}</span><b>${n(k)}</b><span>${l}</span></button>`).join("")}</div>
-  <section class="card">${taskTable(base.filter(t=>!f||t.pocType===f).sort((a,b)=>(a.pendingSince||0)-(b.pendingSince||0)), ["Waiting on", t=>`<b>${esc(t.pocName)}</b><br><small class="muted">${POC[t.pocType]} · ${t.pendingSince?ago(t.pendingSince):"—"}</small>`], ["Nothing is blocked","No open task is waiting on anyone.",""])}</section>
-  ${canApprove && custom.length?`<section class="card"><div class="card-h"><div><h2>${ic("approve",18)}New POC names to approve</h2><p>Approve a name to add it to the saved list everyone picks from. Check it isn't a duplicate first.</p></div></div><div class="pad" style="display:grid;gap:8px">${custom.map(p=>`<div class="row spread"><b>${esc(p)}</b><button class="btn sm" data-poc-approve="${esc(p)}">${ic("check",14)} Approve</button></div>`).join("")}</div></section>`:""}`;
+  <section class="card">${taskTable(base.filter(t=>!f||typeOf(t)===f).sort((a,b)=>(a.pendingSince||a.createdAt||0)-(b.pendingSince||b.createdAt||0)), ["Waiting on", waitOn], ["Nothing is blocked","No open task is waiting on anyone.",""])}</section>
+  ${canApprove && custom.length?`<section class="card"><div class="card-h"><div><h2>${ic("approve",18)}New POC names to approve</h2><p>Within Brand and External names that aren't on the saved list yet. Tasks carry on while these wait.</p></div></div><div class="pad" style="display:grid;gap:8px">${custom.map(p=>`<div class="row spread"><span><b>${esc(p)}</b> <small class="muted">${[...S.tasks.values()].filter(t=>t.pocName===p).length} task(s)</small></span><button class="btn sm" data-poc-review="${esc(p)}">${ic("approve",14)} Review</button></div>`).join("")}</div></section>`:""}`;
+}
+function pocReview(name){
+  const others = (S.config.pocs||[]).filter(x=>x!==name);
+  modal({ title:"Review POC name", icon:"approve", intro:`<b>${esc(name)}</b> is used on ${[...S.tasks.values()].filter(t=>t.pocName===name).length} task(s). Whatever you choose, those tasks carry on as they are.`, submit:"Save decision", fields:[
+    { name:"mode", label:"Decision", type:"radio", required:true, value:"approve", cols:1, options:[{value:"approve",label:"Approve as it is"},{value:"edit",label:"Fix the spelling, then approve"},{value:"map",label:"It's a duplicate: use a saved POC instead"}] },
+    { name:"edited", label:"Corrected name", value:name, showIf:"mode=edit", check:(v,all)=> all.mode==="edit" && v.length<2 ? "Enter the corrected name." : "" },
+    { name:"mapTo", label:"Saved POC", type:"select", options:others.map(x=>({value:x,label:x})), showIf:"mode=map", check:(v,all)=> all.mode==="map" && !v ? "Pick the saved POC." : "" },
+    { name:"verified", label:"I have checked this POC isn't a duplicate of a saved one", type:"checkbox", check:(v,all)=> all.mode!=="map" && !v ? "Confirm you checked for duplicates." : "" },
+  ], run: async v => {
+    const final = v.mode==="approve" ? name : v.mode==="edit" ? v.edited : v.mapTo;
+    if (final!==name) for (const t of [...S.tasks.values()].filter(t=>t.pocName===name)) await saveTask({ ...t, pocName:final }, `POC "${name}" changed to "${final}" by the approver`);
+    await saveConfig({ pocs:[...new Set([...(S.config.pocs||[]), final])].sort(), pocLog:[...(S.config.pocLog||[]), { name, final, mode:v.mode, by:S.me, at:Date.now(), verified:!!v.verified }].slice(-200) }, v.mode==="approve" ? `${name} approved` : `Saved as ${final}`);
+  }});
 }
 function viewEsc(){
   const rows = visibleTasks().filter(t=>t.esc?.active).sort((a,b)=>b.esc.level.localeCompare(a.esc.level)||a.priority-b.priority||a.deadline.localeCompare(b.deadline));
@@ -1199,14 +1259,14 @@ function viewEsc(){
   <div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr))">${owners}</div>
   <section class="card">${taskTable(rows, ["Escalation", t=>`<b>${t.esc.level}</b> → ${esc(nameOf(t.esc.assignee))}<br><small class="muted">${esc(t.esc.reason)} · ${ago(t.esc.at)}</small>`], ["No active escalations","Escalate a task from its detail panel when it needs someone senior.",""])}</section>`;
 }
-const canApproveAny = () => ["approve_ext","approve_waiver","approve_transfer","approve_removal"].some(can);
+const canApproveAny = () => ["approve_ext","approve_waiver","approve_transfer","approve_removal"].some(can) || [...S.projects.values()].some(p=>p.leaderId===S.me);
 function approvalsFor(){
   const out = [];
   for (const t of visibleTasks()) {
-    for (const x of t.transfers||[]) if (x.status==="PENDING" && (x.to===S.me || (can("approve_transfer") && x.by!==S.me))) out.push({ kind:"transfer", t, x });
-    for (const x of t.extensions||[]) if (x.status==="PENDING" && x.by!==S.me && can("approve_ext")) out.push({ kind:"extension", t, x });
-    for (const x of t.waivers||[]) if (x.status==="PENDING" && x.by!==S.me && can("approve_waiver")) out.push({ kind:"waiver", t, x });
-    for (const x of t.removals||[]) if (x.status==="PENDING" && x.by!==S.me && can("approve_removal")) out.push({ kind:"removal", t, x });
+    for (const x of t.transfers||[]) if (x.status==="PENDING" && (x.to===S.me || (canApproveT("approve_transfer",t) && x.by!==S.me))) out.push({ kind:"transfer", t, x });
+    for (const x of t.extensions||[]) if (x.status==="PENDING" && x.by!==S.me && canApproveT("approve_ext",t)) out.push({ kind:"extension", t, x });
+    for (const x of t.waivers||[]) if (x.status==="PENDING" && x.by!==S.me && canApproveT("approve_waiver",t)) out.push({ kind:"waiver", t, x });
+    for (const x of t.removals||[]) if (x.status==="PENDING" && x.by!==S.me && canApproveT("approve_removal",t)) out.push({ kind:"removal", t, x });
   }
   return out.sort((a,b)=>(a.x.at||0)-(b.x.at||0));
 }
@@ -1231,10 +1291,11 @@ function viewChannels(){
   <div class="stats" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr))">${rows.map(r=>`<button class="stat" data-chan="${esc(r.key)}"><span class="row spread" style="color:var(--fg);font-weight:800">${esc(r.label)}${ic("open",15)}</span><b>${r.active}</b><span><span class="${r.overdue?"ovd":""}">${r.overdue} overdue</span> · ${r.soon} due soon · ${r.done} done</span></button>`).join("")}</div>`;
 }
 function viewBin(){
-  if (!can("bin")) return `<section class="card">${emptyState("shield","You don't have Recycle Bin access","Ask an Admin to tick Recycle Bin for you in Roles & permissions.")}</section>`;
-  const allBin = [...S.tasks.values()].filter(t=>t.deleted).sort((a,b)=>(b.deletedAt||0)-(a.deletedAt||0)), F = S.filters, bq = (F.binQ||"").toLowerCase();
+  const full = can("bin");
+  const allBin = [...S.tasks.values()].filter(t=>t.deleted && (full || t.ownerId===S.me || t.deletedBy===S.me)).sort((a,b)=>(b.deletedAt||0)-(a.deletedAt||0)), F = S.filters, bq = (F.binQ||"").toLowerCase();
   const rows = allBin.filter(t=>(!bq || (t.name+" "+t.id+" "+(t.deletedReason||"")).toLowerCase().includes(bq)) && (!F.binBy || t.deletedBy===F.binBy) && (!F.binCh || t.channel===F.binCh));
-  return `<p class="lead">Binned tasks keep their ID and history and can be restored. ${can("purge")?"Purging deletes a task for good.":"Only people with purge access can delete for good."}</p><section class="card">${allBin.length?miniBar(["binQ","Search binned tasks"],[["binBy","Binned by anyone",ppOpts()],["binCh","Any channel",S.config.channels.map(c=>[c,c])]], shown(rows.length, allBin.length, "task")):""}${rows.length?rows.map(t=>`<div class="pad row spread" style="border-bottom:1px solid var(--line);padding-top:16px"><div style="min-width:0"><span class="tname">${esc(t.name)}</span><span class="tid">${t.id}</span><br><small class="muted">Binned by ${esc(nameOf(t.deletedBy))} ${t.deletedAt?ago(t.deletedAt):""} · ${esc(t.deletedReason||"")}</small></div><div class="row"><button class="btn sm" data-restore="${t.id}">${ic("restore",14)} Restore</button>${can("purge")?`<button class="btn sm danger" data-purge="${t.id}">${ic("trash",14)} Purge</button>`:""}</div></div>`).join(""):emptyState("trash", allBin.length?"Nothing matches":"The Recycle Bin is empty")}</section>`;
+  const pr = (t) => t.purgeReq?.status==="PENDING" ? t.purgeReq : null;
+  return `<p class="lead">Binned tasks keep their ID and history and can be restored. ${full?"":"You see the tasks you own or binned. "}Deleting for good needs an Admin's approval, and a copy is kept in the audit store.</p><section class="card">${allBin.length?miniBar(["binQ","Search binned tasks"],[["binBy","Binned by anyone",ppOpts()],["binCh","Any channel",S.config.channels.map(c=>[c,c])]], shown(rows.length, allBin.length, "task")):""}${rows.length?rows.map(t=>`<div class="pad row spread" style="border-bottom:1px solid var(--line);padding-top:16px"><div style="min-width:0"><span class="tname">${esc(t.name)}</span><span class="tid">${t.id}</span><br><small class="muted">Binned by ${esc(nameOf(t.deletedBy))} ${t.deletedAt?ago(t.deletedAt):""} · ${esc(t.deletedReason||"")}</small>${pr(t)?`<br><span class="pill p-red sm">Permanent delete requested by ${esc(nameOf(pr(t).by))}: ${esc(pr(t).reason)}</span>`:""}</div><div class="row"><button class="btn sm" data-restore="${t.id}">${ic("restore",14)} Restore</button>${can("purge")?`<button class="btn sm danger" data-purge="${t.id}">${ic("trash",14)} ${pr(t)?"Approve & delete":"Delete for good"}</button>${pr(t)?`<button class="btn sm ghost" data-purge-decline="${t.id}">Decline</button>`:""}`:pr(t)?`<span class="pill p-amber">Waiting for Admin</span>`:`<button class="btn sm ghost" data-purge-req="${t.id}">${ic("trash",14)} Request permanent delete</button>`}</div></div>`).join(""):emptyState("trash", allBin.length?"Nothing matches":"The Recycle Bin is empty")}</section>`;
 }
 // ---------- user management ----------
 const APP_URL = STANDALONE ? location.origin : "https://claude.ai/artifact/BGkajgz9e1neeuBxxZ3w82";
@@ -1243,7 +1304,7 @@ const inviteStatus = (i) => i.status==="PENDING" && Date.now() - (i.resentAt||i.
 const INV_PILL = { PENDING:["Pending","p-amber"], ACCEPTED:["Accepted","p-green"], EXPIRED:["Expired","p-slate"], REVOKED:["Revoked","p-red"] };
 const inviteFor = (pid) => [...S.invites.values()].find(i=>i.placeholderId===pid && ["PENDING","EXPIRED"].includes(inviteStatus(i)));
 function memberStatus(id){
-  if (!isPlaceholder(id)) return ["Active","p-green"];
+  if (!isPlaceholder(id) || S.team.get(id)?.lastSignInAt) return ["Active","p-green"];
   const inv = inviteFor(id);
   if (inv) return inviteStatus(inv)==="EXPIRED" ? ["Invite expired","p-slate"] : ["Invited","p-amber"];
   return ["Not signed in","p-slate"];
@@ -1546,20 +1607,18 @@ function viewSettings(){
     <div class="form"><label class="f">Deadline window (days)<input type="text" id="sDue" value="${S.config.dueDays}" ${admin?"":"disabled"}></label><label class="f">Follow-up window (days)<input type="text" id="sFollow" value="${S.config.followDays}" ${admin?"":"disabled"}></label></div>
     ${admin?`<button class="btn primary" data-save-settings style="justify-self:start">${ic("check",16)} Save settings</button>`:""}
   </div></section>
-  <section class="card"><div class="card-h"><div><h2>${ic("hourglass",18)}Saved POC list</h2><p>Suggested when someone sets Pending From. L1 approves new names from Pending From.</p></div></div><div class="pad" style="display:grid;gap:10px">
+  <section class="card"><div class="card-h"><div><h2>${ic("hourglass",18)}Saved POC list</h2><p>Suggested when someone sets Pending From. An Admin or team leader approves new names on the Pending From page.</p></div></div><div class="pad" style="display:grid;gap:10px">
     <div class="chips">${pocs.map(p=>`<span class="pill p-slate">${esc(p)}${admin?` <button class="btn ghost sm" style="height:18px;padding:0 2px" data-poc-del="${esc(p)}" aria-label="Remove ${esc(p)}">✕</button>`:""}</span>`).join("")||'<span class="muted">No saved POCs yet.</span>'}</div>
     ${admin?`<div class="row"><input type="text" id="newPoc" placeholder="e.g. Nykaa Category Team" style="flex:1;min-width:160px"><button class="btn" data-poc-add>${ic("plus",16)} Add</button></div>`:""}
   </div></section>
-  <section class="card"><div class="card-h"><div><h2>${ic("gauge",18)}KPI policy</h2><p>How the monthly scoreboard is calculated.</p></div></div><div class="pad"><div class="kv">
-    <div><small>Delivery</small><b>${POLICY.onTime} per on-time task, ${POLICY.late} per late task</b></div>
-    <div><small>Dependencies</small><b>I ${POLICY.dep.I} · WB ${POLICY.dep.WB} · E ${POLICY.dep.E}, capped at ${POLICY.depCap}</b></div>
-    <div><small>Discipline</small><b>${POLICY.disc} minus ${POLICY.penalty} per approved extension without a waiver</b></div>
-  </div><p class="muted" style="margin:12px 0 0">Excludes binned and dropped tasks and names starting with QA or test.</p></div></section>
+  <section class="card"><div class="card-h"><div><h2>${ic("flame",18)}Escalation owners</h2><p>Escalations raised to a level go to this person.</p></div></div><div class="pad" style="display:grid;gap:12px">${["L1","L2","L3"].map(l=>`<label class="f">${l} owner<select id="lvl_${l}" ${admin?"":"disabled"}><option value="">Not assigned</option>${people().map(x=>`<option value="${x.id}" ${S.config.levels?.[l]===x.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select></label>`).join("")}${admin?`<button class="btn primary" data-save-levels style="justify-self:start">${ic("check",16)} Save owners</button>`:""}</div></section>
+  ${kpiPolicyCard(admin)}
   <section class="card"><div class="card-h"><div><h2>${ic("info",18)}How access works</h2></div></div><div class="pad"><div class="info">Admin and Leadership see every task. Team members see tasks they own or are involved in. Everyone sees team counts on the Command Center. This rule is applied in the page, so don't store anything sensitive here.</div></div></section></div>`;
 }
 
 // ---------- projects ----------
-const PSTATUS = { ACTIVE:["Active","p-blue"], ON_HOLD:["On hold","p-amber"], DONE:["Done","p-green"] };
+const PSTATUS = { NOT_STARTED:["To do","p-slate"], ACTIVE:["In progress","p-blue"], ON_HOLD:["On hold","p-amber"], FOR_REVIEW:["For review","p-violet"], DONE:["Completed","p-green"] };
+const projFlags = (pid) => { const ts = projTasks(pid); const ap = ts.reduce((n,t)=>n+["extensions","waivers","transfers","removals"].reduce((m,k)=>m+pendingOf(t,k).length,0),0), es = ts.filter(t=>t.esc?.active).length; return `${ap?`<span class="pill p-amber sm">${ap} approval${ap>1?"s":""} pending</span>`:""}${es?` <span class="pill p-red sm">${es} escalated</span>`:""}`; };
 const projTasks = (pid) => [...S.tasks.values()].filter(t=>!t.deleted && t.projectId===pid && t.status!=="DROPPED");
 function projStats(pid){ const all = projTasks(pid), today = todayIso(); const done = all.filter(t=>t.status==="COMPLETED").length; return { total:all.length, done, active:all.filter(t=>ACTIVE.includes(t.status)).length, overdue:all.filter(t=>ACTIVE.includes(t.status)&&t.deadline<today).length, pct: all.length?Math.round(done/all.length*100):0 }; }
 function viewProjects(){
@@ -1567,38 +1626,40 @@ function viewProjects(){
   if (pid && S.projects.has(pid)) {
     const p = S.projects.get(pid), s = projStats(pid);
     return `<div class="row"><button class="btn sm ghost" data-proj="">${ic("arrowL",16)} All projects</button></div>
-    <section class="card"><div class="card-h"><div><h2 style="font-size:20px">${esc(p.name)}</h2><p>${esc(p.description||"")}</p></div><div class="row"><span class="pill ${PSTATUS[p.status||"ACTIVE"][1]}">${PSTATUS[p.status||"ACTIVE"][0]}</span>${can("projects_manage")?`<button class="btn sm" data-proj-edit="${p.id}">${ic("edit",14)} Edit</button>`:""}<button class="btn sm primary" data-newproj="${p.id}">${ic("plus",14)} Add task</button></div></div>
-    <div class="pad"><div class="kv"><div><small>Owner</small><b>${esc(nameOf(p.ownerId))}</b></div><div><small>Target date</small><b>${fmtD(p.targetDate)}</b></div><div><small>Channels</small><b>${esc((p.channels||[]).join(", ")||"Any")}</b></div></div>
-    <div class="row" style="margin-top:14px"><div class="prog" style="flex:1"><i style="width:${s.pct}%"></i></div><b class="num">${s.pct}%</b></div><small class="muted">${s.done} of ${s.total} done · ${s.active} active · <span class="${s.overdue?"ovd":""}">${s.overdue} overdue</span></small></div></section>
+    <section class="card"><div class="card-h"><div><h2 style="font-size:20px">${esc(p.name)}</h2><p>${esc(p.description||"")}</p></div><div class="row"><span class="pill ${PSTATUS[p.status||"ACTIVE"][1]}">${PSTATUS[p.status||"ACTIVE"][0]}</span>${can("projects_manage")||p.leaderId===S.me||p.ownerId===S.me?`<button class="btn sm" data-proj-edit="${p.id}">${ic("edit",14)} Edit</button>`:""}<button class="btn sm primary" data-newproj="${p.id}">${ic("plus",14)} Add task</button></div></div>
+    <div class="pad"><div class="kv"><div><small>Owner</small><b>${esc(nameOf(p.ownerId))}</b></div><div><small>Project leader</small><b>${p.leaderId?esc(nameOf(p.leaderId)):'<span class="ovd">Not set</span>'}</b></div><div><small>Target date</small><b>${fmtD(p.targetDate)}</b></div><div><small>Channels</small><b>${esc((p.channels||[]).join(", ")||"Any")}</b></div></div>
+    <div class="row" style="margin-top:14px"><div class="prog" style="flex:1"><i style="width:${s.pct}%"></i></div><b class="num">${s.pct}%</b></div><small class="muted">${s.done} of ${s.total} done · ${s.active} active · <span class="${s.overdue?"ovd":""}">${s.overdue} overdue</span></small><div class="chips" style="margin-top:8px">${projFlags(pid)}</div></div></section>
     <section class="card"><div class="card-h"><div><h2>${ic("tasks",18)}Tasks</h2><p>${can("view_all")?"Every task in this project.":"Tasks in this project that you can open."}</p></div></div>${taskTable(projTasks(pid).filter(canSee).sort((a,b)=>a.priority-b.priority||a.deadline.localeCompare(b.deadline)))}</section>`;
   }
   const F = S.filters, pq = (F.projQ||"").toLowerCase(), allP = [...S.projects.values()];
   let list = allP.filter(p=>(!pq || (p.name+" "+(p.description||"")).toLowerCase().includes(pq)) && (!F.projSt || (p.status||"ACTIVE")===F.projSt) && (!F.projOwner || p.ownerId===F.projOwner) && (!F.projCh || (p.channels||[]).includes(F.projCh))).sort((a,b)=>(a.status==="DONE")-(b.status==="DONE") || (a.targetDate||"9").localeCompare(b.targetDate||"9"));
   if (F.projSort==="progress") list.sort((a,b)=>projStats(b.id).pct-projStats(a.id).pct); else if (F.projSort==="overdue") list.sort((a,b)=>projStats(b.id).overdue-projStats(a.id).overdue); else if (F.projSort==="name") list.sort((a,b)=>a.name.localeCompare(b.name));
-  return `<div class="toolbar"><p class="lead">Group related tasks. Counts cover the whole team.</p>${can("projects_manage")?`<button class="btn primary" data-proj-new>${ic("plus",16)} New project</button>`:""}</div>
+  return `<div class="toolbar"><p class="lead">Group related tasks. Counts cover the whole team.</p>${can("create")?`<button class="btn primary" data-proj-new>${ic("plus",16)} New project</button>`:""}</div>
   ${allP.length?`<section class="card">${miniBar(["projQ","Search projects"],[["projSt","Any status",Object.entries(PSTATUS).map(([k,v])=>[k,v[0]])],["projOwner","Any owner",ppOpts()],["projCh","Any channel",S.config.channels.map(c=>[c,c])],["projSort","Sort: target date",[["progress","Most complete"],["overdue","Most overdue"],["name","Name A–Z"]]]], shown(list.length, allP.length, "project"))}</section>`:""}
   ${!list.length && allP.length ? `<section class="card">${emptyState("search","No projects match","Try a different filter.")}</section>` : ""}
-  ${list.length?`<div class="pgrid">${list.map(p=>{ const s = projStats(p.id); return `<button class="card pad proj" data-proj="${p.id}"><div class="row spread"><b style="font-size:16px">${esc(p.name)}</b><span class="pill ${PSTATUS[p.status||"ACTIVE"][1]}">${PSTATUS[p.status||"ACTIVE"][0]}</span></div><p class="muted" style="margin:6px 0 12px;min-height:2.6em">${esc(p.description||"")}</p><div class="row"><div class="prog" style="flex:1"><i style="width:${s.pct}%"></i></div><b class="num">${s.pct}%</b></div><small class="muted">${s.done}/${s.total} done · ${s.active} active · <span class="${s.overdue?"ovd":""}">${s.overdue} overdue</span></small><small class="faint" style="display:block;margin-top:6px">${esc(nameOf(p.ownerId))} · target ${fmtD(p.targetDate)}</small></button>`; }).join("")}</div>`:allP.length?"":`<section class="card">${emptyState("folder","No projects yet",can("projects_manage")?"Group related tasks under a project to track progress.":"Ask someone who manages projects to create one.",can("projects_manage")?`<button class="btn primary" data-proj-new>${ic("plus",16)} New project</button>`:"")}</section>`}`;
+  ${list.length?`<div class="pgrid">${list.map(p=>{ const s = projStats(p.id); return `<button class="card pad proj" data-proj="${p.id}"><div class="row spread"><b style="font-size:16px">${esc(p.name)}</b><span class="pill ${PSTATUS[p.status||"ACTIVE"][1]}">${PSTATUS[p.status||"ACTIVE"][0]}</span></div><p class="muted" style="margin:6px 0 12px;min-height:2.6em">${esc(p.description||"")}</p><div class="row"><div class="prog" style="flex:1"><i style="width:${s.pct}%"></i></div><b class="num">${s.pct}%</b></div><small class="muted">${s.done}/${s.total} done · ${s.active} active · <span class="${s.overdue?"ovd":""}">${s.overdue} overdue</span></small><small class="faint" style="display:block;margin-top:6px">Leader ${p.leaderId?esc(nameOf(p.leaderId)):"not set"} · target ${fmtD(p.targetDate)}</small><div class="chips" style="margin-top:6px">${projFlags(p.id)}</div></button>`; }).join("")}</div>`:allP.length?"":`<section class="card">${emptyState("folder","No projects yet",can("projects_manage")?"Group related tasks under a project to track progress.":"Ask someone who manages projects to create one.",can("projects_manage")?`<button class="btn primary" data-proj-new>${ic("plus",16)} New project</button>`:"")}</section>`}`;
 }
 function projectModal(p){
   modal({ title: p?"Edit project":"New project", submit: p?"Save":"Create project", fields:[
     { name:"name", label:"Name", value:p?.name, required:true },
     { name:"description", label:"Description", type:"textarea", value:p?.description },
     { name:"ownerId", label:"Owner", type:"select", required:true, value:p?.ownerId||S.me, options:people().map(x=>({value:x.id,label:x.name})) },
+    { name:"leaderId", label:"Project leader", type:"select", required:true, value:p?.leaderId||"", options:people().map(x=>({value:x.id,label:x.name})), hint:"Acts as team leader for this project's tasks: sees them and decides their requests." },
     { name:"targetDate", label:"Target date", type:"date", value:p?.targetDate },
     { name:"channels", label:"Channels (comma separated)", value:(p?.channels||[]).join(", ") },
     ...(p?[{ name:"status", label:"Status", type:"select", required:true, value:p.status||"ACTIVE", options:Object.entries(PSTATUS).map(([k,v])=>({value:k,label:v[0]})) }]:[]),
   ], run: async v => {
     const id = p?.id || "prj-" + uid();
-    const doc = { ...(p||{ createdBy:S.me, createdAt:Date.now(), status:"ACTIVE" }), id, name:v.name, description:v.description, ownerId:v.ownerId, targetDate:v.targetDate||null, channels:v.channels.split(",").map(s=>s.trim()).filter(Boolean), ...(p?{status:v.status}:{}), updatedAt:Date.now(), updatedBy:S.me };
+    const doc = { ...(p||{ createdBy:S.me, createdAt:Date.now(), status:"ACTIVE" }), id, name:v.name, description:v.description, ownerId:v.ownerId, leaderId:v.leaderId, targetDate:v.targetDate||null, channels:v.channels.split(",").map(s=>s.trim()).filter(Boolean), ...(p?{status:v.status}:{}), updatedAt:Date.now(), updatedBy:S.me };
     try { await S.db.doc("projects/"+id).set(doc); toast(p?"Project saved":"Project created"); } catch { toast("Couldn't save the project."); return false; }
   }});
 }
 
 // ---------- recurring ----------
 const WD = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-const cadenceText = (s) => s.cadence==="DAILY" ? "Every day" : s.cadence==="WEEKLY" ? `Every ${WD[+s.weekday]}` : `Monthly on day ${s.dayOfMonth}`;
+const cadenceText = (s) => s.cadence==="DAILY" ? "Every day" : s.cadence==="WEEKLY" ? `Every ${WD[+s.weekday]}` : s.cadence==="FLEXI" ? "Flexible: next date set when done" : `Monthly on day ${s.dayOfMonth}`;
 function nextOcc(s, from){
+  if (s.cadence==="FLEXI") return s.nextDate || from;
   if (s.cadence==="DAILY") return from;
   const d = new Date(from+"T00:00:00Z");
   if (s.cadence==="WEEKLY") return addDays(from, ((+s.weekday) - d.getUTCDay() + 7) % 7);
@@ -1614,82 +1675,147 @@ async function generateRecurring(){
     const today = todayIso();
     for (const s of [...S.recurring.values()]) {
       if (s.status!=="ACTIVE" || !s.nextDate || s.nextDate > today || !(realPriv() || s.ownerId===S.me)) continue;
+      if (s.cadence==="FLEXI" && [...S.tasks.values()].some(t=>t.seriesId===s.id && !t.deleted && ACTIVE.includes(t.status))) continue;
       let occ = s.nextDate, last = null;
-      while (occ <= today) { last = occ; occ = advanceOcc(s, occ); }
+      if (s.cadence==="FLEXI") { last = occ; occ = null; } else while (occ <= today) { last = occ; occ = advanceOcc(s, occ); }
       const id = `REC-${s.id.replace(/^rec-/,"").slice(0,4).toUpperCase()}-${last.replace(/-/g,"").slice(2)}`;
       if (!S.tasks.has(id)) {
-        const t = { id, name:`${s.title} (${fmtD(last)})`, channel:s.channel, ownerId:s.ownerId, createdBy:s.createdBy||S.me, priority:+s.priority, status:"NOT_STARTED", deadline:addDays(last, +s.leadDays||0), originalDeadline:addDays(last, +s.leadDays||0), followup:null, description:s.description||"", pocType:null, pocName:null, pendingSince:null, flagged:false, starred:false, deleted:false, access:[], extensions:[], waivers:[], transfers:[], removals:[], projectId:s.projectId||null, seriesId:s.id, createdAt:Date.now(), version:1, sample:!!s.sample, history:[{ at:Date.now(), by:S.me, text:`created from the recurring series "${s.title}"` }] };
+        const t = { id, name:`${s.title} (${fmtD(last)})`, channel:s.channel, ownerId:s.ownerId, createdBy:s.createdBy||S.me, priority:+s.priority, status:"NOT_STARTED", deadline:addDays(last, +s.leadDays||0), originalDeadline:addDays(last, +s.leadDays||0), followup:null, description:s.description||"", pocType:null, pocName:null, pendingSince:null, flagged:false, starredBy:[], deleted:false, access:[], extensions:[], waivers:[], transfers:[], removals:[], projectId:s.projectId||null, seriesId:s.id, occurrenceDate:last, createdAt:Date.now(), version:1, sample:!!s.sample, history:[{ at:Date.now(), by:S.me, text:`created from the recurring series "${s.title}"` }] };
         await S.db.doc("tasks/"+id).set(t);
       }
       await S.db.doc("recurring/"+s.id).set({ ...s, nextDate:occ, lastGenerated:last });
     }
   } catch {} finally { S.genBusy = false; }
 }
+function recDash(){
+  const today = todayIso(), month = today.slice(0,7), occ = [...S.tasks.values()].filter(t=>t.seriesId && !t.deleted && canSee(t));
+  const tiles = [["Active series",[...S.recurring.values()].filter(s=>s.status==="ACTIVE").length,"repeat","t-blue"],["Upcoming (7 days)",[...S.recurring.values()].filter(s=>s.status==="ACTIVE"&&s.nextDate&&s.nextDate>today&&s.nextDate<=addDays(today,7)).length,"calendar","t-sky"],["Due now",occ.filter(t=>ACTIVE.includes(t.status)&&t.deadline>=today).length,"clock","t-amber"],["Missed (open past deadline)",occ.filter(t=>ACTIVE.includes(t.status)&&t.deadline<today).length,"alert","t-red"],["Completed this month",occ.filter(t=>t.status==="COMPLETED"&&(t.completedOn||"").startsWith(month)).length,"check","t-green"],["Done late this month",occ.filter(t=>t.status==="COMPLETED"&&(t.completedOn||"").startsWith(month)&&t.completedOn>t.deadline).length,"alert","t-red"],["Extended",occ.filter(t=>(t.extensions||[]).some(x=>x.status==="APPROVED")).length,"calendar","t-violet"],["Waived",occ.filter(t=>(t.waivers||[]).some(x=>x.status==="APPROVED")).length,"approve","t-violet"]];
+  const done = occ.filter(t=>t.status==="COMPLETED"), rate = done.length ? Math.round(done.filter(t=>t.completedOn<=t.deadline).length/done.length*100) : null;
+  return `<section class="card"><div class="card-h"><div><h2>${ic("gauge",18)}Recurring dashboard</h2><p>Occurrences across ${can("view_all")?"everyone":"the people you can see"}. On-time rate so far: <b>${rate===null?"—":rate+"%"}</b>. Recurring tasks never earn delivery points.</p></div></div><div class="pad" style="padding-top:4px"><div class="stats tiles8">${tiles.map(([l,n,i,tone])=>`<div class="stat"><span class="sic ${tone}">${ic(i,18)}</span><b>${n}</b><span>${l}</span></div>`).join("")}</div></div></section>`;
+}
 function viewRecurring(){
-  const F = S.filters, rq = (F.recQ||"").toLowerCase(), allR = [...S.recurring.values()];
+  const F = S.filters, rq = (F.recQ||"").toLowerCase(), mgr = can("recurring_manage"), allR = [...S.recurring.values()].filter(s=>mgr || wide() || s.ownerId===S.me || s.createdBy===S.me);
   const list = allR.filter(s=>(!rq || (s.title+" "+(s.description||"")).toLowerCase().includes(rq)) && (!F.recSt || s.status===F.recSt) && (!F.recCad || s.cadence===F.recCad) && (!F.recOwner || s.ownerId===F.recOwner) && (!F.recCh || s.channel===F.recCh)).sort((a,b)=>(a.status!=="ACTIVE")-(b.status!=="ACTIVE") || (a.nextDate||"").localeCompare(b.nextDate||""));
-  const canS = (s) => can("recurring_manage") || s.ownerId===S.me;
-  return `<div class="toolbar"><p class="lead">Repeating work. A task is created automatically on each date. Skip and Pause need a follow-up date.</p>${can("recurring_manage")?`<button class="btn primary" data-rec-new>${ic("plus",16)} New series</button>`:""}</div>
-  ${allR.length?`<section class="card">${miniBar(["recQ","Search series"],[["recSt","Any status",[["ACTIVE","Active"],["PAUSED","Paused"]]],["recCad","Any schedule",[["DAILY","Daily"],["WEEKLY","Weekly"],["MONTHLY","Monthly"]]],["recOwner","Any owner",ppOpts()],["recCh","Any channel",S.config.channels.map(c=>[c,c])]], shown(list.length, allR.length, "series").replace("seriess","series"))}${list.length?`<div class="tbl-wrap"><table><tr><th>Series</th><th>Repeats</th><th>Owner</th><th>Channel</th><th>Priority</th><th>Next</th><th>Status</th><th></th></tr>${list.map(s=>`<tr><td style="min-width:200px"><b>${esc(s.title)}</b>${s.projectId&&S.projects.get(s.projectId)?`<br><small class="muted">${esc(S.projects.get(s.projectId).name)}</small>`:""}</td><td>${cadenceText(s)}</td><td>${esc(nameOf(s.ownerId))}</td><td>${esc(s.channel)}</td><td>${prio(+s.priority)}</td><td class="num">${s.status==="ACTIVE"?fmtD(s.nextDate):"—"}</td><td>${s.status==="ACTIVE"?'<span class="pill p-green">Active</span>':`<span class="pill p-amber">Paused</span><br><small class="muted">Follow-up ${fmtD(s.pause?.followup)}</small>`}</td>
-  <td class="r" style="white-space:nowrap">${canS(s)?(s.status==="ACTIVE"?`<button class="btn sm" data-rec-skip="${s.id}" data-tip="Skip ${fmtD(s.nextDate)}">${ic("skip",14)} Skip</button> <button class="btn sm" data-rec-pause="${s.id}">${ic("pause",14)} Pause</button>`:`<button class="btn sm primary" data-rec-resume="${s.id}">${ic("play",14)} Resume</button>`):""}${can("recurring_manage")?` <button class="btn ghost icon sm" data-rec-edit="${s.id}" aria-label="Edit ${esc(s.title)}" data-tip="Edit">${ic("edit",16)}</button>`:""}</td></tr>`).join("")}</table></div>`:emptyState("search","No series match","Try a different filter.")}</section>`:`<section class="card">${emptyState("repeat","No recurring series yet",can("recurring_manage")?"Set up weekly checks or monthly reports once; tasks appear on their own.":"Ask someone who manages recurring work to create one.",can("recurring_manage")?`<button class="btn primary" data-rec-new>${ic("plus",16)} New series</button>`:"")}</section>`}
+  const canS = (s) => mgr || s.ownerId===S.me || s.createdBy===S.me;
+  const open = visibleTasks().filter(t=>t.seriesId && ACTIVE.includes(t.status) && (t.ownerId===S.me || mgr || wide())).sort((a,b)=>a.deadline.localeCompare(b.deadline));
+  return `<div class="toolbar"><p class="lead">Repeating work. A task is created on each date. Tick an occurrence to mark it done. Skip and Pause need a follow-up date.</p>${can("create")||S.portal==="user"?`<button class="btn primary" data-rec-new>${ic("plus",16)} New series</button>`:""}</div>
+  ${(mgr||wide())&&S.portal!=="user"?recDash():""}
+  <section class="card"><div class="card-h"><div><h2>${ic("check",18)}Open occurrences</h2><p>Tick to mark done. Flexible series ask for the next date.</p></div></div>${open.length?`<div class="pad" style="padding-top:2px">${open.map(t=>`<div class="occ"><input type="checkbox" data-occ-done="${t.id}" aria-label="Mark ${esc(t.name)} done" ${t.ownerId===S.me||can("edit_any")?"":"disabled"}><span style="flex:1;min-width:0"><a href="#" data-open="${t.id}" style="font-weight:700;color:var(--fg);text-decoration:none">${esc(t.name)}</a><br><small class="muted">${esc(nameOf(t.ownerId))} · ${deadline(t)}</small></span>${statusPill(t.status)}</div>`).join("")}</div>`:`<p class="pad muted" style="margin:0;padding-top:4px">Nothing open.</p>`}</section>
+  ${allR.length?`<section class="card">${miniBar(["recQ","Search series"],[["recSt","Any status",[["ACTIVE","Active"],["PAUSED","Paused"]]],["recCad","Any schedule",[["DAILY","Daily"],["WEEKLY","Weekly"],["MONTHLY","Monthly"],["FLEXI","Flexible"]]],["recOwner","Any owner",ppOpts()],["recCh","Any channel",S.config.channels.map(c=>[c,c])]], shown(list.length, allR.length, "series").replace("seriess","series"))}${list.length?`<div class="tbl-wrap"><table><tr><th>Series</th><th>Repeats</th><th>Owner</th><th>Channel</th><th>Priority</th><th>Next</th><th>Status</th><th></th></tr>${list.map(s=>`<tr><td style="min-width:200px"><b>${esc(s.title)}</b>${s.projectId&&S.projects.get(s.projectId)?`<br><small class="muted">${esc(S.projects.get(s.projectId).name)}</small>`:""}</td><td>${cadenceText(s)}</td><td>${esc(nameOf(s.ownerId))}</td><td>${esc(s.channel)}</td><td>${prio(+s.priority)}</td><td class="num">${s.status==="ACTIVE"&&s.nextDate?fmtD(s.nextDate):"—"}</td><td>${s.status==="ACTIVE"?'<span class="pill p-green">Active</span>':`<span class="pill p-amber">Paused</span><br><small class="muted">Follow-up ${fmtD(s.pause?.followup)}</small>`}</td>
+  <td class="r" style="white-space:nowrap">${canS(s)?(s.status==="ACTIVE"?`${s.cadence!=="FLEXI"?`<button class="btn sm" data-rec-skip="${s.id}" data-tip="Skip ${fmtD(s.nextDate)}">${ic("skip",14)} Skip</button> `:""}<button class="btn sm" data-rec-pause="${s.id}">${ic("pause",14)} Pause</button>`:`<button class="btn sm primary" data-rec-resume="${s.id}">${ic("play",14)} Resume</button>`):""}${canS(s)?` <button class="btn ghost icon sm" data-rec-edit="${s.id}" aria-label="Edit ${esc(s.title)}" data-tip="Edit">${ic("edit",16)}</button>`:""}</td></tr>`).join("")}</table></div>`:emptyState("search","No series match","Try a different filter.")}</section>`:`<section class="card">${emptyState("repeat","No recurring series yet","Set up weekly checks or monthly reports once; tasks appear on their own.",`<button class="btn primary" data-rec-new>${ic("plus",16)} New series</button>`)}</section>`}
   ${list.some(s=>(s.skips||[]).length)?`<section class="card"><div class="card-h"><div><h2>${ic("skip",18)}Skipped dates</h2><p>Each skip has a follow-up date that shows in Due Soon.</p></div></div><div class="pad" style="display:grid;gap:8px">${list.flatMap(s=>(s.skips||[]).map(k=>({s,k}))).sort((a,b)=>b.k.at-a.k.at).slice(0,20).map(({s,k})=>`<div class="row spread"><span><b>${esc(s.title)}</b> · skipped ${fmtD(k.date)} · ${esc(k.reason)}</span><small class="muted">Follow-up ${fmtD(k.followup)} · ${esc(nameOf(k.by))}</small></div>`).join("")}</div></section>`:""}`;
 }
 function recurringModal(s){
   modal({ title: s?"Edit recurring series":"New recurring series", submit: s?"Save":"Create series", fields:[
     { name:"title", label:"Task title", value:s?.title, required:true },
     { name:"channel", label:"Channel", type:"select", required:true, value:s?.channel, options:S.config.channels.map(c=>({value:c,label:c})) },
-    { name:"ownerId", label:"Owner", type:"select", required:true, value:s?.ownerId||S.me, options:people().map(x=>({value:x.id,label:x.name})) },
+    { name:"ownerId", label:"Owner", type:"select", required:true, value:s?.ownerId||S.me, options:(can("recurring_manage")?people():people().filter(x=>x.id===S.me)).map(x=>({value:x.id,label:x.name})) },
     { name:"priority", label:"Priority", type:"select", required:true, value:String(s?.priority??3), options:[0,1,2,3,4,5].map(x=>({value:String(x),label:"P"+x})) },
-    { name:"cadence", label:"Repeats", type:"select", required:true, value:s?.cadence||"WEEKLY", options:[{value:"DAILY",label:"Daily"},{value:"WEEKLY",label:"Weekly"},{value:"MONTHLY",label:"Monthly"}] },
-    { name:"weekday", label:"Day of week (weekly)", type:"select", value:String(s?.weekday??1), options:WD.map((d,i)=>({value:String(i),label:d})) },
-    { name:"dayOfMonth", label:"Day of month (monthly)", value:String(s?.dayOfMonth??1), check:(val,v)=> v.cadence==="MONTHLY" && !(+val>=1 && +val<=31) ? "Enter a day from 1 to 31." : "" },
+    { name:"cadence", label:"Repeats", type:"select", required:true, value:s?.cadence||"WEEKLY", options:[{value:"DAILY",label:"Daily"},{value:"WEEKLY",label:"Weekly"},{value:"MONTHLY",label:"Monthly"},{value:"FLEXI",label:"Flexible (custom dates)"}] },
+    { name:"weekday", label:"Day of week", type:"select", value:s?.weekday!==undefined?String(s.weekday):"", options:WD.map((d,i)=>({value:String(i),label:d})), showIf:"cadence=WEEKLY", check:(val,v)=> v.cadence==="WEEKLY" && val==="" ? "Pick the day of the week." : "" },
+    { name:"dayOfMonth", label:"Day of month", value:s?.dayOfMonth?String(s.dayOfMonth):"", showIf:"cadence=MONTHLY", check:(val,v)=> v.cadence==="MONTHLY" && !(+val>=1 && +val<=31) ? "Enter a day from 1 to 31." : "" },
+    { name:"firstDate", label:"First date", type:"date", value:s?.cadence==="FLEXI"?(s.nextDate||""):"", min:todayIso(), showIf:"cadence=FLEXI", hint:"After each one is done, its follow-up date becomes the next date.", check:(val,v)=> v.cadence==="FLEXI" && !val ? "Pick the first date." : "" },
     { name:"leadDays", label:"Days to complete", value:String(s?.leadDays??0), hint:"0 means due the same day it's created.", check:(val)=> !(+val>=0 && +val<=30) ? "Enter 0 to 30." : "" },
     { name:"projectId", label:"Project", type:"select", value:s?.projectId||"", options:[...S.projects.values()].map(p=>({value:p.id,label:p.name})) },
     { name:"description", label:"Description", type:"textarea", value:s?.description },
   ], run: async v => {
     const id = s?.id || "rec-" + uid();
-    const base = { ...(s||{ createdBy:S.me, createdAt:Date.now(), status:"ACTIVE", skips:[] }), id, title:v.title, channel:v.channel, ownerId:v.ownerId, priority:+v.priority, cadence:v.cadence, weekday:+v.weekday, dayOfMonth:+v.dayOfMonth||1, leadDays:+v.leadDays||0, projectId:v.projectId||null, description:v.description };
-    base.nextDate = nextOcc(base, s && s.nextDate && s.cadence===v.cadence ? s.nextDate : todayIso());
+    const base = { ...(s||{ createdBy:S.me, createdAt:Date.now(), status:"ACTIVE", skips:[] }), id, title:v.title, channel:v.channel, ownerId:v.ownerId, priority:+v.priority, cadence:v.cadence, weekday:+v.weekday||0, dayOfMonth:+v.dayOfMonth||1, leadDays:+v.leadDays||0, projectId:v.projectId||null, description:v.description };
+    base.nextDate = v.cadence==="FLEXI" ? (v.firstDate || s?.nextDate || todayIso()) : nextOcc(base, s && s.nextDate && s.cadence===v.cadence ? s.nextDate : todayIso());
     try { await S.db.doc("recurring/"+id).set(base); toast(s?"Series saved":"Series created"); setTimeout(generateRecurring, 300); } catch { toast("Couldn't save the series."); return false; }
   }});
 }
 function recurringAction(kind, s){
   if (kind==="skip") return modal({ title:`Skip ${fmtD(s.nextDate)}?`, intro:"No task is created for this date.", submit:"Skip", fields:[{ name:"reason", label:"Reason", type:"textarea", required:true },{ name:"followup", label:"Follow-up date", type:"date", required:true, min:todayIso() }], run: async v => { await S.db.doc("recurring/"+s.id).set({ ...s, skips:[...(s.skips||[]), { date:s.nextDate, reason:v.reason, followup:v.followup, by:S.me, at:Date.now() }], nextDate:advanceOcc(s, s.nextDate) }); toast("Skipped"); } });
   if (kind==="pause") return modal({ title:"Pause series", intro:"No tasks are created until it's resumed.", submit:"Pause", fields:[{ name:"reason", label:"Reason", type:"textarea", required:true },{ name:"followup", label:"Follow-up date", type:"date", required:true, min:todayIso(), hint:"When to review it. Shows in Due Soon." }], run: async v => { await S.db.doc("recurring/"+s.id).set({ ...s, status:"PAUSED", pause:{ reason:v.reason, followup:v.followup, by:S.me, at:Date.now() } }); toast("Paused"); } });
-  if (kind==="resume") return S.db.doc("recurring/"+s.id).set({ ...s, status:"ACTIVE", pause:null, nextDate:nextOcc(s, todayIso()) }).then(()=>{ toast("Resumed"); setTimeout(generateRecurring, 300); });
+  if (kind==="resume") return S.db.doc("recurring/"+s.id).set({ ...s, status:"ACTIVE", pause:null, nextDate:s.cadence==="FLEXI" ? (s.nextDate||todayIso()) : nextOcc(s, todayIso()) }).then(()=>{ toast("Resumed"); setTimeout(generateRecurring, 300); });
 }
 
 // ---------- KPI scoreboard ----------
-const POLICY = { onTime:4, late:2, dep:{ I:2, WB:3.5, E:5 }, depCap:25, disc:15, penalty:2 };
+const KPI_DEFAULT = { version:1, wDelivery:80, wDiscipline:20, onTime:4, late:2, extPenalty:2, exclude:"qa,test" };
+const policy = () => ({ ...KPI_DEFAULT, ...(S.config.kpi||{}) });
 const monthOf = (ms) => new Date(ms + 330*60000).toISOString().slice(0,7);
 const fmtMonth = (m) => new Date(m+"-01T00:00:00Z").toLocaleDateString("en-GB",{month:"long",year:"numeric",timeZone:"UTC"});
-function kpiRows(month){
-  const rows = new Map(people().map(p=>[p.id,{ id:p.id, name:p.name, onTime:0, late:0, I:0, WB:0, E:0, ext:0, waived:0 }]));
+const ptsOk = () => hasPerm(S.me,"kpi_points") && realRole()!=="member";
+const excluded = (t, P) => { const ex = String(P.exclude||"").split(",").map(x=>x.trim().toLowerCase()).filter(Boolean); return ex.some(x=>t.name.toLowerCase().startsWith(x)); };
+const eligible = (t, P) => !t.deleted && t.status==="COMPLETED" && !t.seriesId && !subsOf(t).length && !excluded(t, P);
+function kpiRows(month, P = policy()){
+  const rows = new Map(people().map(p=>[p.id,{ id:p.id, name:p.name, assigned:0, n:0, onTime:0, late:0, lateWaived:0, raw:0, I:0, WB:0, E:0, ext:0, extReq:0, waived:0 }]));
   for (const t of S.tasks.values()) {
-    if (t.deleted || t.status==="DROPPED" || /^(qa|test)/i.test(t.name)) continue;
-    if (t.status==="COMPLETED" && (t.completedOn||"").startsWith(month)) { const r = rows.get(t.ownerId); if (r) { if (t.completedOn <= t.deadline) r.onTime++; else r.late++; if (t.pocType) r[t.pocType]++; } }
-    for (const x of t.extensions||[]) if (x.status==="APPROVED" && monthOf(x.decidedAt||x.at)===month) { const r = rows.get(x.by); if (r) r.ext++; }
-    for (const w of t.waivers||[]) if (w.status==="APPROVED" && monthOf(w.decidedAt||w.at)===month) { const r = rows.get(w.by); if (r) r.waived++; }
+    if (t.deleted || t.status==="DROPPED" || excluded(t, P)) continue;
+    if (!t.seriesId && monthOf(t.createdAt||0)===month) { const r = rows.get(t.ownerId); if (r) r.assigned++; }
+    if (eligible(t, P) && (t.completedOn||"").startsWith(month)) {
+      const r = rows.get(t.completedBy || t.ownerId);
+      if (r) { r.n++; if (t.completedOn <= t.deadline) { r.onTime++; r.raw += P.onTime; } else if ((t.waivers||[]).some(w=>w.status==="APPROVED" && w.lateCompletion)) { r.lateWaived++; r.raw += P.onTime; } else { r.late++; r.raw += P.late; } if (t.pocType) r[t.pocType]++; }
+    }
+    for (const x of t.extensions||[]) { if (monthOf(x.at)===month) { const r = rows.get(x.by); if (r) r.extReq++; } if (x.status==="APPROVED" && monthOf(x.decidedAt||x.at)===month) { const r = rows.get(x.by); if (r) r.ext++; } }
+    for (const w of t.waivers||[]) if (w.status==="APPROVED" && !w.lateCompletion && monthOf(w.decidedAt||w.at)===month) { const r = rows.get(w.by); if (r) r.waived++; }
   }
-  return [...rows.values()].map(r => { const delivery = r.onTime*POLICY.onTime + r.late*POLICY.late, deps = Math.min(POLICY.depCap, r.I*POLICY.dep.I + r.WB*POLICY.dep.WB + r.E*POLICY.dep.E), disc = Math.max(0, POLICY.disc - POLICY.penalty*Math.max(0, r.ext - r.waived)); return { ...r, delivery, deps, disc, total: Math.round((delivery+deps+disc)*100)/100 }; }).sort((a,b)=>b.total-a.total || a.name.localeCompare(b.name));
+  return [...rows.values()].map(r => { const delivery = r.n ? Math.round(r.raw/(P.onTime*r.n)*P.wDelivery*10)/10 : null, delays = Math.max(0, r.ext - r.waived), disc = Math.max(0, P.wDiscipline - P.extPenalty*delays); return { ...r, delays, delivery, disc, total: delivery===null ? null : Math.round((delivery+disc)*10)/10, policyVersion:P.version }; }).sort((a,b)=>(b.total??-1)-(a.total??-1) || a.name.localeCompare(b.name));
+}
+const fmtPts = (v) => v===null||v===undefined ? '<span class="faint" data-tip="No eligible deliveries this month">—</span>' : v;
+function kpiPolicyCard(admin){
+  const P = policy(), h = (S.config.kpiHistory||[]).slice(-1)[0];
+  const inp = (k,l,hint="") => `<label class="f">${l}<input type="text" id="kp_${k}" value="${esc(P[k])}" ${admin?"":"disabled"}>${hint?`<small>${hint}</small>`:""}</label>`;
+  return `<section class="card"><div class="card-h"><div><h2>${ic("gauge",18)}KPI policy · version ${P.version}</h2><p>${h?`Last published by ${esc(nameOf(h.by))} on ${fmtT(h.at)}.`:"Default policy."} Changes apply to months that aren't closed. Closed months keep their frozen scores.</p></div></div><div class="pad" style="display:grid;gap:12px">
+    <div class="form">${inp("wDelivery","Delivery weight","Out of 100")}${inp("wDiscipline","Discipline weight","Delivery + discipline = 100")}${inp("onTime","Points per on-time task","Also used for a late task with a late-completion waiver")}${inp("late","Points per late task")}${inp("extPenalty","Discipline deduction","Per approved extension without a waiver")}${inp("exclude","Excluded name prefixes","Comma separated, e.g. qa, test")}</div>
+    <p class="muted" style="margin:0">Delivery = points earned ÷ (on-time points × eligible tasks) × delivery weight. Recurring tasks and parent tasks that have subtasks don't count. Each subtask counts for its own owner. Dependencies are tracked for reporting only.</p>
+    ${admin?`<button class="btn primary" data-save-kpi style="justify-self:start">${ic("check",16)} Preview & publish</button>`:""}
+  </div></section>`;
+}
+async function saveKpiPolicy(){
+  const P = policy(), num = (k) => Number($("#kp_"+k).value);
+  const next = { ...P, wDelivery:num("wDelivery"), wDiscipline:num("wDiscipline"), onTime:num("onTime"), late:num("late"), extPenalty:num("extPenalty"), exclude:$("#kp_exclude").value.trim() };
+  const bad = ["wDelivery","wDiscipline","onTime","late","extPenalty"].find(k=>!(next[k]>=0 && next[k]<=100));
+  if (bad) return toast("Every number must be between 0 and 100.","error");
+  if (next.wDelivery + next.wDiscipline !== 100) return toast("Delivery and discipline weights must add up to 100.","error");
+  if (next.late > next.onTime) return toast("Late points can't be more than on-time points.","error");
+  next.version = P.version + 1;
+  const m = todayIso().slice(0,7), before = kpiRows(m, P), after = kpiRows(m, next);
+  const diff = after.filter(r=>r.total!==null || before.find(x=>x.id===r.id)?.total!==null).slice(0,8).map(r=>`<tr><td>${esc(nameOf(r.id))}</td><td class="r num">${fmtPts(before.find(x=>x.id===r.id)?.total)}</td><td class="r num"><b>${fmtPts(r.total)}</b></td></tr>`).join("");
+  modal({ title:`Publish KPI policy version ${next.version}?`, icon:"gauge", intro:`Live months (${fmtMonth(m)} and any month not closed) use the new rules straight away. Closed months don't change.`, body:`<div class="tbl-wrap" style="margin-bottom:12px"><table><tr><th>Preview · ${fmtMonth(m)}</th><th class="r">Now</th><th class="r">After</th></tr>${diff||'<tr><td colspan="3" class="muted">No scores yet this month.</td></tr>'}</table></div>`, submit:"Publish", fields:[{ name:"reason", label:"Reason for the change", type:"textarea", required:true },{ name:"ok", label:"I understand these rules apply to every month that isn't closed", type:"checkbox", check:(v)=>!v?"Tick to confirm.":"" }], run: async v => { await saveConfig({ kpi:next, kpiHistory:[...(S.config.kpiHistory||[]), { version:next.version, by:S.me, at:Date.now(), reason:v.reason, values:next }].slice(-50) }, `KPI policy version ${next.version} published`); } });
+}
+function kpiMoM(){
+  const cur = todayIso().slice(0,7), months = [...Array(6)].map((_,i)=>{ const d = new Date(cur+"-01T00:00:00Z"); d.setUTCMonth(d.getUTCMonth()-i); return d.toISOString().slice(0,7); });
+  let ids = people().map(p=>p.id); if (!can("view_all")) { const mine = new Set([S.me, ...teamOf(S.me)]); ids = ids.filter(i=>mine.has(i)); }
+  if (S.filters.momWho) ids = ids.filter(i=>i===S.filters.momWho);
+  const pts = ptsOk();
+  const data = months.flatMap(m => { const fr = S.kpi.get(m); const rows = fr ? fr.rows : kpiRows(m); return ids.map(id => ({ m, r: rows.find(x=>x.id===id) || { id, assigned:0, onTime:0, late:0, lateWaived:0, extReq:0, ext:0, waived:0, delays:0, I:0, WB:0, E:0, total:null } })); });
+  S.momCsv = [["Month","Team member","Tasks assigned","Completed on time","Completed late","Late (waived)","Extensions requested","Extensions waived","Delays (unwaived)","Internal deps","Brand deps","External deps",...(pts?["Score (0-100)"]:[])], ...data.map(({m,r})=>[fmtMonth(m), nameOf(r.id), r.assigned, r.onTime, r.late, r.lateWaived||0, r.extReq||0, r.waived, r.delays??Math.max(0,r.ext-r.waived), r.I, r.WB, r.E, ...(pts?[r.total??""]:[])])];
+  return `<section class="card"><div class="card-h"><div><h2>${ic("calendar",18)}Month on month</h2><p>Last 6 months. Closed months show their frozen numbers.</p></div><div class="row"><select data-fs="momWho" aria-label="Person" style="width:auto"><option value="">Everyone</option>${ids.length||S.filters.momWho?people().map(p=>`<option value="${p.id}" ${S.filters.momWho===p.id?"selected":""}>${esc(p.name)}</option>`).join(""):""}</select><button class="btn sm" data-mom-csv>${ic("open",14)} Export CSV</button></div></div>
+  <div class="tbl-wrap"><table><tr><th>Month</th><th>Team member</th><th class="r">Assigned</th><th class="r">On time</th><th class="r">Late</th><th class="r">Late (waived)</th><th class="r">Ext. req.</th><th class="r">Ext. waived</th><th class="r">Delays</th><th class="r">Int. deps</th><th class="r">Brand deps</th><th class="r">Ext. deps</th>${pts?'<th class="r">Score</th>':""}</tr>${data.map(({m,r})=>`<tr><td style="white-space:nowrap">${fmtMonth(m)}</td><td><b>${esc(nameOf(r.id))}</b></td><td class="r num">${r.assigned??0}</td><td class="r num">${r.onTime}</td><td class="r num ${r.late?"ovd":"faint"}">${r.late}</td><td class="r num">${r.lateWaived||0}</td><td class="r num">${r.extReq||0}</td><td class="r num">${r.waived}</td><td class="r num">${r.delays??Math.max(0,r.ext-r.waived)}</td><td class="r num">${r.I}</td><td class="r num">${r.WB}</td><td class="r num">${r.E}</td>${pts?`<td class="r num"><b>${fmtPts(r.total)}</b></td>`:""}</tr>`).join("")}</table></div></section>`;
+}
+function kpiChannels(m){
+  const today = todayIso(), out = new Map(S.config.channels.map(c=>[c,{ c, done:0, onTime:0, late:0, open:0, overdue:0, extReq:0, age:0, ageN:0, deps:0, esc:0 }]));
+  for (const t of S.tasks.values()) {
+    if (t.deleted || t.status==="DROPPED") continue;
+    const r = out.get(t.channel) || out.set(t.channel, { c:t.channel, done:0, onTime:0, late:0, open:0, overdue:0, extReq:0, age:0, ageN:0, deps:0, esc:0 }).get(t.channel);
+    if (t.status==="COMPLETED" && (t.completedOn||"").startsWith(m)) { r.done++; if (t.completedOn<=t.deadline) r.onTime++; else r.late++; r.age += ageH(t); r.ageN++; }
+    if (ACTIVE.includes(t.status)) { r.open++; if (t.deadline<today) r.overdue++; if (t.pocType||subDeps(t).length) r.deps++; if (t.esc?.active) r.esc++; }
+    r.extReq += (t.extensions||[]).filter(x=>monthOf(x.at)===m).length;
+  }
+  const rows = [...out.values()].filter(r=>r.done||r.open).sort((a,b)=>b.done+b.open-(a.done+a.open));
+  return `<section class="card"><div class="card-h"><div><h2>${ic("store",18)}Channel scorecard · ${fmtMonth(m)}</h2><p>Completed work in the month, plus what is open right now.</p></div></div>${rows.length?`<div class="tbl-wrap"><table><tr><th>Channel</th><th class="r">Completed</th><th class="r">On-time %</th><th class="r">Late</th><th class="r">Avg. ageing</th><th class="r">Open now</th><th class="r">Overdue now</th><th class="r">Waiting on others</th><th class="r">Escalated</th><th class="r">Ext. requested</th></tr>${rows.map(r=>`<tr><td><b>${esc(r.c)}</b></td><td class="r num">${r.done}</td><td class="r num">${r.done?Math.round(r.onTime/r.done*100)+"%":"—"}</td><td class="r num ${r.late?"ovd":"faint"}">${r.late}</td><td class="r num">${r.ageN?Math.round(r.age/r.ageN)+"h":"—"}</td><td class="r num">${r.open}</td><td class="r num ${r.overdue?"ovd":"faint"}">${r.overdue}</td><td class="r num">${r.deps}</td><td class="r num">${r.esc}</td><td class="r num">${r.extReq}</td></tr>`).join("")}</table></div>`:emptyState("store","No channel data yet")}</section>`;
 }
 function viewKpi(){
-  const cur = todayIso().slice(0,7);
+  const cur = todayIso().slice(0,7), tab = S.filters.kpiTab || "month";
   const months = [...Array(6)].map((_,i)=>{ const d = new Date(cur+"-01T00:00:00Z"); d.setUTCMonth(d.getUTCMonth()-i); return d.toISOString().slice(0,7); });
-  const m = S.filters.kpiMonth || cur, frozen = S.kpi.get(m);
+  const m = S.filters.kpiMonth || cur, frozen = S.kpi.get(m), P = policy(), pts = ptsOk();
   let rows = frozen ? frozen.rows : kpiRows(m);
   const full = can("kpi_all");
   if (!full) rows = rows.filter(r=>r.id===S.me); else if (!can("view_all")) { const mine = new Set([S.me, ...teamOf(S.me)]); rows = rows.filter(r=>mine.has(r.id)); }
   const kq = (S.filters.kpiQ||"").toLowerCase(), ks = S.filters.kpiSort || "";
   if (kq) rows = rows.filter(r=>(nameOf(r.id)||r.name).toLowerCase().includes(kq));
   if (S.filters.kpiRole) rows = rows.filter(r=>role(r.id)===S.filters.kpiRole);
-  if (ks) rows = [...rows].sort((a,b)=> ks==="name" ? (nameOf(a.id)||a.name).localeCompare(nameOf(b.id)||b.name) : ks==="late" ? b.late-a.late : ks==="low" ? a.total-b.total : b[ks]-a[ks]);
-  const max = Math.max(1, ...rows.map(r=>r.total));
-  return `<div class="toolbar"><div class="row"><select data-kpi-month aria-label="Month" style="width:auto">${months.map(x=>`<option value="${x}" ${x===m?"selected":""}>${fmtMonth(x)}${S.kpi.has(x)?" · closed":""}</option>`).join("")}</select>${frozen?`<span class="pill p-violet">Closed by ${esc(nameOf(frozen.closedBy))} · ${fmtT(frozen.closedAt)}</span>`:`<span class="pill p-blue">Live</span>`}</div>
-  ${can("kpi_close")&&!frozen&&m<cur?`<button class="btn" data-kpi-close="${m}">${ic("check",16)} Close ${fmtMonth(m)}</button>`:""}${can("kpi_close")&&frozen?`<button class="btn ghost" data-kpi-reopen="${m}">${ic("refresh",16)} Reopen month</button>`:""}</div>
-  <section class="card"><div class="card-h"><div><h2>${full?"Team scoreboard":"Your score"} · ${fmtMonth(m)}</h2><p>Delivery + Dependencies (max ${POLICY.depCap}) + Discipline (max ${POLICY.disc}). ${frozen?"Frozen when the month was closed.":"Updates live as tasks complete and requests are decided."}</p></div></div>
-  ${full?miniBar(["kpiQ","Search people"],[["kpiRole","All roles",Object.entries(ROLE_LABEL)],["kpiSort","Sort: highest total",[["low","Lowest total"],["onTime","Most on time"],["late","Most late"],["deps","Most dependency points"],["name","Name A–Z"]]]]):""}
-  ${rows.length?`<div class="tbl-wrap"><table><tr>${full?"<th>#</th>":""}<th>Person</th><th class="r">On time</th><th class="r">Late</th><th class="r">Deps I/WB/E</th><th class="r">Ext. (waived)</th><th class="r">Delivery</th><th class="r">Deps</th><th class="r">Discipline</th><th class="r">Total</th><th style="width:18%"></th></tr>${rows.map((r,i)=>`<tr>${full?`<td class="num faint">${i+1}</td>`:""}<td><b>${esc(nameOf(r.id)||r.name)}</b></td><td class="r num">${r.onTime}</td><td class="r num ${r.late?"ovd":"faint"}">${r.late}</td><td class="r num">${r.I}/${r.WB}/${r.E}</td><td class="r num">${r.ext} (${r.waived})</td><td class="r num">${r.delivery}</td><td class="r num">${r.deps}</td><td class="r num">${r.disc}</td><td class="r num"><b>${r.total}</b></td><td><div class="prog"><i style="width:${r.total/max*100}%;background:var(--brand)"></i></div></td></tr>`).join("")}</table></div>`:emptyState("gauge","No score yet","Scores appear once you're on the team.")}</section>`;
+  if (ks) rows = [...rows].sort((a,b)=> ks==="name" ? (nameOf(a.id)||a.name).localeCompare(nameOf(b.id)||b.name) : ks==="late" ? b.late-a.late : ks==="low" ? (a.total??999)-(b.total??999) : (b[ks]||0)-(a[ks]||0));
+  const tabs = full ? `<div class="seg">${[["month","Scoreboard"],["mom","Month on month"],["chan","By channel"]].map(([k,l])=>`<button data-kpitab="${k}" aria-pressed="${tab===k}">${l}</button>`).join("")}</div>` : "";
+  const head = `<div class="toolbar"><div class="row"><select data-kpi-month aria-label="Month" style="width:auto">${months.map(x=>`<option value="${x}" ${x===m?"selected":""}>${fmtMonth(x)}${S.kpi.has(x)?" · closed":""}</option>`).join("")}</select>${frozen?`<span class="pill p-violet">Closed by ${esc(nameOf(frozen.closedBy))} · ${fmtT(frozen.closedAt)}</span>`:`<span class="pill p-blue">Live · policy v${P.version}</span>`}${tabs}</div>
+  ${can("kpi_close")&&!frozen&&m<cur?`<button class="btn" data-kpi-close="${m}">${ic("check",16)} Close ${fmtMonth(m)}</button>`:""}${can("kpi_close")&&frozen?`<button class="btn ghost" data-kpi-reopen="${m}">${ic("refresh",16)} Reopen month</button>`:""}</div>`;
+  if (full && tab==="mom") return head + kpiMoM();
+  if (full && tab==="chan") return head + kpiChannels(m);
+  return head + `<section class="card"><div class="card-h"><div><h2>${full?"Team scoreboard":"Your numbers"} · ${fmtMonth(m)}</h2><p>${pts?`Delivery (out of ${P.wDelivery}) + Discipline (out of ${P.wDiscipline}) = 100. `:"Your delivery and discipline metrics for the month. "}Recurring tasks and parents with subtasks don't count. ${frozen?"Frozen when the month was closed.":"Updates live."}</p></div></div>
+  ${full?miniBar(["kpiQ","Search people"],[["kpiRole","All roles",Object.entries(ROLE_LABEL)],["kpiSort","Sort: highest total",[["low","Lowest total"],["onTime","Most on time"],["late","Most late"],["name","Name A–Z"]]]]):""}
+  ${rows.length?`<div class="tbl-wrap"><table><tr>${full?"<th>#</th>":""}<th>Person</th><th class="r">Eligible tasks</th><th class="r">On time</th><th class="r">Late</th><th class="r">Late (waived)</th><th class="r">Ext. (waived)</th><th class="r">Deps I/WB/E</th>${pts?`<th class="r">Delivery /${P.wDelivery}</th><th class="r">Discipline /${P.wDiscipline}</th><th class="r">Total</th>`:""}</tr>${rows.map((r,i)=>`<tr>${full?`<td class="num faint">${i+1}</td>`:""}<td><b>${esc(nameOf(r.id)||r.name)}</b></td><td class="r num">${r.n??(r.onTime+r.late)}</td><td class="r num">${r.onTime}</td><td class="r num ${r.late?"ovd":"faint"}">${r.late}</td><td class="r num">${r.lateWaived||0}</td><td class="r num">${r.ext} (${r.waived})</td><td class="r num">${r.I}/${r.WB}/${r.E}</td>${pts?`<td class="r num">${fmtPts(r.delivery)}</td><td class="r num">${r.disc}</td><td class="r num"><b>${fmtPts(r.total)}</b></td>`:""}</tr>`).join("")}</table></div>`:emptyState("gauge","No numbers yet","They appear once you're on the team.")}</section>`;
 }
 
 // ---------- activity, email, profile ----------
@@ -1705,7 +1831,7 @@ function viewActivity(){
   return `<section class="card">${miniBar(["actQ","Search actions, tasks or IDs"],[["actWho","Everyone",ppOpts()],["actRange","Any time",[["1","Last 24 hours"],["7","Last 7 days"],["30","Last 30 days"]]],["actType","Any action",[["create","Created"],["status","Status changes"],["edit","Edits"],["req","Requests & decisions"],["esc","Escalations"],["bin","Bin & restore"]]],["actCh","Any channel",S.config.channels.map(c=>[c,c])]], `<b class="num" style="color:var(--fg)">${rows.length}</b> event${rows.length===1?"":"s"}`)}
   ${rows.length?`<div class="tbl-wrap tbl-stack st-act"><table><tr><th>When (IST)</th><th>Who</th><th>What</th><th>Task</th></tr>${rows.slice(0,300).map(r=>`<tr class="click" data-open="${r.t.id}"><td class="num" style="white-space:nowrap">${fmtT(r.at)}</td><td><b>${esc(nameOf(r.by))}</b></td><td>${esc(r.text)}</td><td><span class="tname" style="font-weight:600">${esc(r.t.name)}</span><span class="tid">${r.t.id}${r.t.deleted?" · in Bin":""}</span></td></tr>`).join("")}</table></div>`:emptyState("activity","No activity matches","Try another search or person.")}</section>`;
 }
-const EMAIL_EVENTS = [["Task assigned or reassigned","New owner"],["Invitation sent or resent","Invited person"],["Transfer requested / decided","Proposed owner; requester"],["Extension, waiver or removal requested","Approvers (Admin, Leadership, owner's Team Leader)"],["Extension, waiver or removal decided","Requester + owner"],["Escalation raised, moved or resolved","Level owner + task owner"],["Priority raised","Owner"],["Task completed","Person who created it"],["Task moved to the Bin","Owner"]];
+const EMAIL_EVENTS = [["Task assigned or reassigned","New owner"],["Task sent for review","Reviewer"],["Review accepted or sent back","Task owner"],["Invitation sent or resent","Invited person"],["Transfer requested / decided","Proposed owner; requester"],["Extension, waiver or removal requested","Approvers (Admin, Leadership, owner's Team Leader)"],["Extension, waiver or removal decided","Requester + owner"],["Escalation raised, moved or resolved","Level owner + task owner"],["Priority raised","Owner"],["Task completed","Person who created it"],["Task moved to the Bin","Owner"]];
 function viewEmails(){
   const on = emailOn();
   return `${on?`<div class="success">${ic("check",16)}<span>Email notifications are <b>on</b>. People get an email for the events below, as long as their email is on their profile in User management. The bell shows them too.</span></div>`:`<div class="info">${ic("info",16)}<span>${STANDALONE?"Email notifications are off until an email service is connected on the server. The bell at the top right still shows every event live.":"Email delivery isn\'t connected in this online version. Notifications reach people in the bell at the top right instead, live."}</span></div>`}
@@ -1722,7 +1848,7 @@ function viewProfile(){
     <a class="stat" href="#tasks"><b>${act.length}</b><span>Active tasks</span></a>
     <a class="stat" href="#due"><b class="${act.some(t=>t.deadline<today)?"ovd":""}">${act.filter(t=>t.deadline<today).length}</b><span>Overdue</span></a>
     <div class="stat"><b>${mine.filter(t=>t.status==="COMPLETED"&&(t.completedOn||"").startsWith(month)).length}</b><span>Completed this month</span></div>
-    <a class="stat" href="#kpi"><b>${k?k.total:"—"}</b><span>KPI score this month</span></a>
+    ${ptsOk()?`<a class="stat" href="#kpi"><b>${k?fmtPts(k.total):"—"}</b><span>KPI score this month</span></a>`:`<a class="stat" href="#kpi"><b>${k?k.onTime:"—"}</b><span>On time this month</span></a>`}
   </div>
   <section class="card"><div class="card-h"><div><h2>${ic("sun",18)}Appearance</h2><p>Saved on this device.</p></div>${themeSeg()}</div><div class="pad" style="padding-top:0"></div></section>
   <section class="card"><div class="card-h"><div><h2>${ic("activity",18)}Your recent actions</h2></div></div>${recent.length?`<div class="pad" style="display:grid;gap:10px">${recent.map(r=>`<div class="row spread"><span>${esc(r.text)} · <a href="#profile" data-open="${r.t.id}" style="color:var(--brand);font-weight:700">${esc(r.t.name)}</a></span><small class="faint">${ago(r.at)}</small></div>`).join("")}</div>`:emptyState("activity","Nothing yet","Your changes show up here.")}</section>`;
@@ -1752,7 +1878,7 @@ function renderUserMenu(){
   if (!S.me) return;
   $("#userBtn").setAttribute("aria-expanded", !!S.userOpen);
   const l = levelOf(S.me);
-  $("#userPop").innerHTML = S.userOpen ? `<div class="pop" style="width:270px" role="menu"><div class="row" style="padding:8px 8px 12px;border-bottom:1px solid var(--line);flex-wrap:nowrap;gap:10px">${avatar(S.me,40)}<div style="min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis">${esc(nameOf(S.me))}</b>${emailOf(S.me)?`<small class="muted" style="display:block;overflow:hidden;text-overflow:ellipsis">${esc(emailOf(S.me))}</small>`:""}<small style="display:block;color:var(--brand);font-weight:700">${PORTALS[S.portal]?.label||ROLE_LABEL[realRole()]}${l?` · ${l} owner`:""}</small></div></div><div style="padding-top:4px"><a class="menu-i" href="#profile" role="menuitem">${ic("user",17)} My profile</a><a class="menu-i" href="#kpi" role="menuitem">${ic("gauge",17)} My KPI score</a>${isAdmin()?`<a class="menu-i" href="#users" role="menuitem">${ic("users",17)} User management</a><a class="menu-i" href="#settings" role="menuitem">${ic("settings",17)} Settings</a>`:""}</div>${allowedPortals().length>1?`<div style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px"><small class="faint" style="display:block;padding:6px 10px 2px;font-weight:800;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase">Switch portal</small>${allowedPortals().map(k=>`<button class="menu-i" role="menuitem" data-portal-go="${k}" ${k===S.portal?'aria-current="true"':""}>${ic(PORTALS[k].icon,17)} ${PORTALS[k].label}${k===S.portal?` <span class="pill nodot p-blue" style="margin-left:auto;height:20px">Current</span>`:""}</button>`).join("")}</div>`:""}<div style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px"><button class="menu-i" role="menuitem" data-switchuser>${ic("users",17)} Switch user</button><button class="menu-i" role="menuitem" data-signout style="color:var(--red)">${ic("logout",17)} Sign out</button></div></div>` : "";
+  $("#userPop").innerHTML = S.userOpen ? `<div class="pop" style="width:270px" role="menu"><div class="row" style="padding:8px 8px 12px;border-bottom:1px solid var(--line);flex-wrap:nowrap;gap:10px">${avatar(S.me,40)}<div style="min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis">${esc(nameOf(S.me))}</b>${emailOf(S.me)?`<small class="muted" style="display:block;overflow:hidden;text-overflow:ellipsis">${esc(emailOf(S.me))}</small>`:""}<small style="display:block;color:var(--brand);font-weight:700">${PORTALS[S.portal]?.label||ROLE_LABEL[realRole()]}${l?` · ${l} owner`:""}</small></div></div><div style="padding-top:4px">${allowedPortals().includes("admin")?(S.portal==="admin"?`<button class="menu-i" role="menuitem" data-portal-go="${allowedPortals().includes("leadership")?"leadership":"user"}">${ic("arrowL",17)} Leave Admin portal</button>`:`<button class="menu-i" role="menuitem" data-portal-go="admin">${ic("settings",17)} Open Admin portal</button>`):""}<a class="menu-i" href="#profile" role="menuitem">${ic("user",17)} My profile</a><a class="menu-i" href="#kpi" role="menuitem">${ic("gauge",17)} My KPI score</a>${isAdmin()?`<a class="menu-i" href="#users" role="menuitem">${ic("users",17)} User management</a><a class="menu-i" href="#settings" role="menuitem">${ic("settings",17)} Settings</a>`:""}</div><div style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px"><button class="menu-i" role="menuitem" data-switchuser>${ic("users",17)} Switch user</button><button class="menu-i" role="menuitem" data-signout style="color:var(--red)">${ic("logout",17)} Sign out</button></div></div>` : "";
 }
 // ---------- task detail ----------
 function renderSheet(){
@@ -1760,52 +1886,85 @@ function renderSheet(){
   const t = S.open && S.tasks.get(S.open);
   if (!t || !canSee(t)) { if (S.open && S.loaded) S.open = null; layer.innerHTML = ""; return; }
   const scroll = layer.querySelector(".sheet")?.scrollTop || 0;
-  const own = t.ownerId===S.me, p = can("edit_any"), act = ACTIVE.includes(t.status);
-  const next = { NOT_STARTED:[["IN_PROGRESS","Start","play"],["COMPLETED","Mark complete","check"],["ON_HOLD","Put on hold","pause"]], IN_PROGRESS:[["COMPLETED","Mark complete","check"],["ON_HOLD","Put on hold","pause"]], ON_HOLD:[["IN_PROGRESS","Resume","play"],["COMPLETED","Mark complete","check"]], COMPLETED:[["IN_PROGRESS","Reopen","restore"]], DROPPED:[["NOT_STARTED","Reopen","restore"]] }[t.status];
+  const own = t.ownerId===S.me, p = can("edit_any") || isProjLead(t), act = ACTIVE.includes(t.status);
   const canEdit = own || p, isLvl = !!levelOf(S.me) || can("esc_manage");
-  const pendingExt = (t.extensions||[]).find(x=>x.status==="PENDING");
-  const tl = timeliness(t), proj = t.projectId && S.projects.get(t.projectId);
+  const rv = t.review, reviewer = t.status==="FOR_REVIEW" && rv?.reviewerId===S.me;
+  const tl = timeliness(t), proj = projOf(t), parent = t.parentId && S.tasks.get(t.parentId);
+  const subs = subsOf(t), canCmt = ["admin","leadership","team_lead"].includes(realRole()) || isProjLead(t);
+  const remPending = pendingOf(t,"removals")[0];
+  const stSel = canEdit && !t.deleted ? `<label class="st-sel">Status <select data-status-sel aria-label="Status" ${t.status==="FOR_REVIEW"&&!p?"disabled":""}>${[...STATUS_PICK, ...(t.status==="DROPPED"?["DROPPED"]:[])].map(k=>`<option value="${k}" ${k===t.status?"selected":""} ${k==="DROPPED"?"disabled":""}>${STATUS[k][0]}</option>`).join("")}</select></label>` : "";
   layer.innerHTML = `<div class="scrim-o" data-close></div><aside class="sheet" role="dialog" aria-modal="true" aria-label="${esc(t.name)}">
-    <div class="sheet-h"><span class="tid" style="flex:1">${t.id}</span>${canEdit&&!t.deleted?`<button class="btn ghost icon sm" data-act="edit" aria-label="Edit" data-tip="Edit">${ic("edit",17)}</button><button class="btn ghost icon sm" id="sheetMore" aria-label="More actions">${ic("more",18)}</button>`:""}<button class="btn ghost icon sm" data-close aria-label="Close">${ic("x",18)}</button></div>
+    <div class="sheet-h"><span class="tid" style="flex:1">${t.id}</span><span class="hbtns">${!t.deleted?`<button class="btn ghost icon sm ${starredByMe(t)?"on":""}" data-act="star" aria-label="${starredByMe(t)?"Unstar":"Star"}" data-tip="${starredByMe(t)?"Unstar":"Star"}">${ic("star",17)}</button>`:""}${canEdit&&!t.deleted?`<button class="btn ghost icon sm ${t.flagged?"flag-on":""}" data-act="flag" aria-label="${t.flagged?"Remove flag":"Flag"}" data-tip="${t.flagged?"Remove flag":"Flag"}">${ic("flag",17)}</button>`:""}<button class="btn ghost icon sm" data-copy="${t.id}" aria-label="Copy task ID" data-tip="Copy ID">${ic("copy",17)}</button>${canEdit&&!t.deleted?`<button class="btn ghost icon sm" data-act="edit" aria-label="Edit" data-tip="Edit">${ic("edit",17)}</button><button class="btn ghost icon sm" data-act="bin" aria-label="${canBinT(t)?"Move to Recycle Bin":"Request removal"}" data-tip="${canBinT(t)?"Move to Recycle Bin":"Request removal"}" style="color:var(--red)">${ic("trash",17)}</button>`:""}<button class="btn ghost icon sm" data-close aria-label="Close">${ic("x",18)}</button></span></div>
     <div class="sheet-b">
+    ${parent?`<div class="info" style="align-items:center">${ic("tasks",16)}<span>Subtask of <a href="#" data-open="${parent.id}" style="font-weight:700;color:var(--brand)">${esc(parent.name)}</a> <span class="tid">${parent.id}</span></span></div>`:""}
     <div><h2 style="margin:0 0 10px;font-size:23px;font-weight:800;letter-spacing:-.02em;text-wrap:balance">${marks(t)}${esc(t.name)}</h2>
-    <div class="chips">${statusPill(t.status)} ${prio(t.priority)} ${lvl(t)} ${t.pocType?pocPill(t):""} ${tl==="OVERDUE"?`<span class="pill p-red">Overdue ${daysLate(t)}d</span>`:tl==="LATE"?`<span class="pill p-amber">Completed late</span>`:tl==="ON_TIME"?`<span class="pill p-green">On time</span>`:""}</div></div>
-    ${t.deleted?`<div class="notice">${ic("trash",16)}This task is in the Recycle Bin.</div>`:""}
-    ${canEdit && !t.deleted ? `<div class="row">${next.map(([s,l,i],k)=>`<button class="btn ${k===0?"primary":""}" data-status="${s}">${ic(i,16)} ${l}</button>`).join("")}</div>`:""}
-    <section class="card pad" style="padding-top:18px"><div class="kv"><div><small>Owner</small><span class="row" style="flex-wrap:nowrap">${avatar(t.ownerId,24)}<b>${esc(nameOf(t.ownerId))}</b></span></div><div><small>Channel</small><b>${esc(t.channel)}</b></div><div><small>Deadline</small><b>${deadline(t)}</b>${t.originalDeadline&&t.originalDeadline!==t.deadline?`<br><small class="faint" style="text-transform:none;letter-spacing:0;font-weight:500">Originally ${fmtD(t.originalDeadline)}</small>`:""}</div><div><small>Follow-up</small><b>${fmtD(t.followup)}</b></div><div><small>Project</small><b>${proj?esc(proj.name):"—"}</b></div><div><small>Pending From</small><b>${t.pocType?`${POC[t.pocType]}: ${esc(t.pocName)}`:"Not waiting"}</b></div><div><small>Created</small><b>${fmtT(t.createdAt)}</b></div><div><small>Created by</small><b>${esc(nameOf(t.createdBy))}</b></div>${t.completedOn?`<div><small>Completed</small><b>${fmtD(t.completedOn)}</b></div>`:""}</div>${t.description?`<p class="muted" style="margin:14px 0 0">${esc(t.description)}</p>`:""}</section>
+    <div class="chips">${statusPill(t.status)} ${prio(t.priority)} ${lvl(t)} ${t.pocType?pocPill(t):""} ${tl==="OVERDUE"?`<span class="pill p-red">Overdue ${daysLate(t)}d</span>`:tl==="LATE"?`<span class="pill p-amber">Completed late</span>`:tl==="ON_TIME"?`<span class="pill p-green">On time</span>`:""} <span class="pill p-slate nodot">Age ${ageH(t)}h</span></div>${reqBadges(t)}</div>
+    ${t.deleted?`<div class="notice">${ic("trash",16)}<span style="flex:1">This task is in the Recycle Bin.</span>${(own||can("bin"))?`<button class="btn sm" data-restore="${t.id}">${ic("restore",14)} Restore</button>`:""}</div>`:""}
+    ${remPending&&!t.deleted?`<div class="notice">${ic("trash",16)}Removal requested by ${esc(nameOf(remPending.by))} ${ago(remPending.at)}. Waiting for a decision.</div>`:""}
+    ${stSel?`<div class="row">${stSel}</div>`:""}
+    ${t.status==="FOR_REVIEW"?`<section class="card"><div class="card-h"><div><h2>${ic("approve",17)}In review</h2><p>With <b>${esc(nameOf(rv?.reviewerId))}</b> since ${fmtT(rv?.submittedAt)}. Timeliness counts from the first submission (${fmtD(rv?.firstSubmittedOn)}).</p></div></div><div class="pad row" style="padding-top:4px">${reviewer||p?`<button class="btn sm primary" data-act="rv_accept">${ic("check",14)} Accept</button><button class="btn sm" data-act="rv_reject">${ic("x",14)} Send back</button>`:""}${reviewer||own||p?`<button class="btn sm ghost" data-act="rv_pass">${ic("transfer",14)} Pass review to someone else</button>`:""}${own?`<button class="btn sm ghost" data-act="rv_withdraw">Withdraw</button>`:""}</div></section>`:""}
+    <section class="card pad" style="padding-top:18px"><div class="kv"><div><small>Owner</small><span class="row" style="flex-wrap:nowrap">${avatar(t.ownerId,24)}<b>${esc(nameOf(t.ownerId))}</b></span></div><div><small>Channel</small><b>${esc(t.channel)}</b></div><div><small>Deadline</small><b>${deadline(t)}</b>${t.originalDeadline&&t.originalDeadline!==t.deadline?`<br><small class="faint" style="text-transform:none;letter-spacing:0;font-weight:500">Originally ${fmtD(t.originalDeadline)}</small>`:""}</div><div><small>Follow-up</small><b>${fmtD(t.followup)}</b></div><div><small>Project</small><b>${proj?esc(proj.name):"—"}</b>${proj?.leaderId?`<br><small class="faint" style="text-transform:none;letter-spacing:0;font-weight:500">Leader ${esc(nameOf(proj.leaderId))}</small>`:""}</div><div><small>Pending From</small><b>${t.pocType?`${POC[t.pocType]}: ${esc(t.pocName)}`:"Not waiting"}</b></div><div><small>Created</small><b>${fmtT(t.createdAt)}</b></div><div><small>Created by</small><b>${esc(nameOf(t.createdBy))}</b></div>${t.completedOn?`<div><small>Completed</small><b>${fmtD(t.completedOn)}</b></div>`:""}<div style="grid-column:1/-1"><small>Output link</small>${t.outputLink?`<a href="${esc(t.outputLink)}" target="_blank" rel="noopener noreferrer" style="font-weight:700;color:var(--brand);word-break:break-all">${esc(t.outputLink)}</a>`:'<b class="faint">—</b>'}${(canEdit||reviewer)&&!t.deleted?` <button class="btn ghost sm" data-act="link">${ic("link",14)} ${t.outputLink?"Change":"Add link"}</button>`:""}</div></div>${t.description?`<p class="muted" style="margin:14px 0 0">${esc(t.description)}</p>`:""}</section>
+    ${!t.parentId?`<section class="card"><div class="card-h"><div><h2>${ic("tasks",17)}Subtasks</h2><p>One level only. A subtask owned by someone else is a dependency until it's done.</p></div>${canEdit&&!t.deleted&&act?`<button class="btn sm" data-act="subtask">${ic("plus",14)} Add subtask</button>`:""}</div>${subs.length?`<div class="pad" style="padding-top:2px">${subs.map(c=>`<div class="sub-row"><span style="flex:1;min-width:0"><a href="#" data-open="${c.id}" style="font-weight:700;color:var(--fg);text-decoration:none">${esc(c.name)}</a> <span class="tid">${c.id}</span><br><small class="muted">${esc(nameOf(c.ownerId))} · due ${fmtD(c.deadline)}</small></span>${statusPill(c.status)}</div>`).join("")}</div>`:`<p class="pad muted" style="margin:0;padding-top:4px">No subtasks.</p>`}</section>`:""}
+    ${(t.comments||[]).length||canCmt?`<section class="card"><div class="card-h"><div><h2>${ic("send",17)}Leadership comments</h2><p>Notes from Admin, Leadership, team leaders and project leaders.</p></div>${canCmt&&!t.deleted?`<button class="btn sm" data-act="comment">${ic("plus",14)} Comment</button>`:""}</div>${(t.comments||[]).length?`<div class="pad" style="display:grid;gap:10px;padding-top:4px">${[...t.comments].reverse().map(c=>`<div class="cmt"><b>${esc(nameOf(c.by))}</b> <small class="faint">${ROLE_LABEL[role(c.by)]||""} · ${fmtT(c.at)}</small><div style="margin-top:4px;white-space:pre-wrap">${esc(c.text)}</div></div>`).join("")}</div>`:`<p class="pad muted" style="margin:0;padding-top:4px">No comments yet.</p>`}</section>`:""}
     <section class="card"><div class="card-h"><div><h2>${ic("flame",17)}Escalation</h2><p>${t.esc?.active?`${t.esc.level} · assigned to ${esc(nameOf(t.esc.assignee))}`:"L0 · not escalated"}</p></div><div class="row">${t.esc?.active?`${isLvl?`<button class="btn sm" data-act="reassign">${ic("transfer",14)} Reassign</button><button class="btn sm primary" data-act="resolve">${ic("check",14)} Resolve</button>`:""}`:(canEdit&&act&&!t.deleted?`<button class="btn sm danger" data-act="escalate">${ic("flame",14)} Escalate</button>`:"")}</div></div>${t.esc?`<div class="pad" style="padding-top:6px"><b>${t.esc.active?"Active":"Resolved"}</b> · ${esc(t.esc.reason)}<br><small class="muted">Raised by ${esc(nameOf(t.esc.by))} ${t.esc.at?ago(t.esc.at):""} · Path ${(t.esc.path||[]).join(" → ")}${t.esc.resolution?` · Resolved: ${esc(t.esc.resolution)}`:""}</small></div>`:""}</section>
-    <section class="card"><div class="card-h"><div><h2>${ic("calendar",17)}Extensions & waivers</h2><p>The deadline changes only when an extension is approved. Waivers are decided on their own.</p></div><div class="row">${own&&!pendingExt&&t.status!=="DROPPED"&&!t.deleted?`<button class="btn sm" data-act="ext">${ic("calendar",14)} Request extension</button>`:""}${own&&!t.deleted?`<button class="btn sm ghost" data-act="waiver">Request waiver</button>`:""}</div></div>
-      ${(t.extensions||[]).length||(t.waivers||[]).length?`<div class="pad" style="display:grid;gap:10px;padding-top:6px">${(t.extensions||[]).map(x=>`<div class="box"><div class="row"><b>Extension</b> <span class="num">${fmtD(x.from)} → ${fmtD(x.to)}</span> ${reqPill(x.status)} ${x.afterCompletion?'<span class="pill p-violet">After completion</span>':""}</div><small class="muted">“${esc(x.reason)}” · ${esc(nameOf(x.by))}${x.decidedBy?` · decided by ${esc(nameOf(x.decidedBy))}${x.note?`: ${esc(x.note)}`:""}`:""}</small>${x.status==="PENDING"&&can("approve_ext")&&x.by!==S.me?`<div class="row" style="margin-top:10px"><button class="btn sm primary" data-decide="extension|${t.id}|${x.id}|APPROVE">${ic("check",14)} Approve</button><button class="btn sm" data-decide="extension|${t.id}|${x.id}|REJECT">Reject</button></div>`:""}</div>`).join("")}
-      ${(t.waivers||[]).map(w=>`<div class="box" style="background:var(--violet-soft);border-color:transparent"><div class="row"><b>Waiver</b> ${reqPill(w.status)} ${w.extId?"":'<span class="pill p-slate">Standalone</span>'}</div><small class="muted">“${esc(w.reason)}” · ${esc(nameOf(w.by))}${w.decidedBy?` · decided by ${esc(nameOf(w.decidedBy))}`:""}</small>${w.status==="PENDING"&&can("approve_waiver")&&w.by!==S.me?`<div class="row" style="margin-top:10px"><button class="btn sm primary" data-decide="waiver|${t.id}|${w.id}|APPROVE">${ic("check",14)} Approve waiver</button><button class="btn sm" data-decide="waiver|${t.id}|${w.id}|REJECT">Reject</button></div>`:""}</div>`).join("")}</div>`:`<p class="pad muted" style="margin:0;padding-top:4px">No requests yet.</p>`}
+    <section class="card"><div class="card-h"><div><h2>${ic("calendar",17)}Extensions & waivers</h2><p>The deadline changes only when an extension is approved. Deciding one extension closes the other pending ones on this task.</p></div><div class="row">${own&&t.status!=="DROPPED"&&!t.deleted?`<button class="btn sm" data-act="ext">${ic("calendar",14)} Request extension</button>`:""}${own&&!t.deleted?`<button class="btn sm ghost" data-act="waiver">Request waiver</button>`:""}</div></div>
+      ${(t.extensions||[]).length||(t.waivers||[]).length?`<div class="pad" style="display:grid;gap:10px;padding-top:6px">${(t.extensions||[]).map(x=>`<div class="box"><div class="row"><b>Extension</b> <span class="num">${fmtD(x.from)} → ${fmtD(x.to)}</span> ${reqPill(x.status)} ${x.afterCompletion?'<span class="pill p-violet">After completion</span>':""}</div><small class="muted">“${esc(x.reason)}” · ${esc(nameOf(x.by))}${x.decidedBy?` · decided by ${esc(nameOf(x.decidedBy))}${x.note?`: ${esc(x.note)}`:""}`:""}</small>${x.status==="PENDING"&&canApproveT("approve_ext",t)&&x.by!==S.me?`<div class="row" style="margin-top:10px"><button class="btn sm primary" data-decide="extension|${t.id}|${x.id}|APPROVE">${ic("check",14)} Approve</button><button class="btn sm" data-decide="extension|${t.id}|${x.id}|REJECT">Reject</button></div>`:""}</div>`).join("")}
+      ${(t.waivers||[]).map(w=>`<div class="box" style="background:var(--violet-soft);border-color:transparent"><div class="row"><b>Waiver</b> ${reqPill(w.status)} ${w.lateCompletion?'<span class="pill p-violet">Late completion</span>':""} ${w.extId?"":'<span class="pill p-slate">Standalone</span>'}</div><small class="muted">“${esc(w.reason)}” · ${esc(nameOf(w.by))}${w.decidedBy?` · decided by ${esc(nameOf(w.decidedBy))}`:""}</small>${w.status==="PENDING"&&canApproveT("approve_waiver",t)&&w.by!==S.me?`<div class="row" style="margin-top:10px"><button class="btn sm primary" data-decide="waiver|${t.id}|${w.id}|APPROVE">${ic("check",14)} Approve waiver</button><button class="btn sm" data-decide="waiver|${t.id}|${w.id}|REJECT">Reject</button></div>`:""}</div>`).join("")}</div>`:`<p class="pad muted" style="margin:0;padding-top:4px">No requests yet.</p>`}
     </section>
-    <section class="card"><div class="card-h"><div><h2>${ic("users",17)}People with access</h2><p>Besides the owner, Admin and Leadership.</p></div>${canEdit&&!t.deleted?`<div class="row"><button class="btn sm" data-act="share">${ic("share",14)} Share</button>${own||p?`<button class="btn sm ghost" data-act="transfer">${ic("transfer",14)} Transfer</button>`:""}</div>`:""}</div><div class="pad" style="padding-top:6px"><div class="chips">${(t.access||[]).filter(id=>id!==t.ownerId).map(id=>`<span class="pill nodot p-slate" style="height:28px;padding-left:4px">${avatar(id,20)} ${esc(nameOf(id))}</span>`).join("")||'<span class="muted">Only the owner.</span>'}</div>${(t.transfers||[]).filter(x=>x.status==="PENDING").map(x=>`<div class="info" style="margin-top:10px;align-items:center;flex-wrap:wrap">${ic("transfer",16)}<span style="flex:1">Transfer to <b>${esc(nameOf(x.to))}</b> is waiting for them to accept.</span>${x.to===S.me||(can("approve_transfer")&&x.by!==S.me)?`<span class="row"><button class="btn sm primary" data-decide="transfer|${t.id}|${x.id}|APPROVE">${x.to===S.me?"Accept":"Approve"}</button><button class="btn sm" data-decide="transfer|${t.id}|${x.id}|REJECT">Reject</button></span>`:""}</div>`).join("")}</div></section>
+    <section class="card"><div class="card-h"><div><h2>${ic("users",17)}People with access</h2><p>Besides the owner, Admin and Leadership.</p></div>${canEdit&&!t.deleted?`<div class="row"><button class="btn sm" data-act="share">${ic("share",14)} Share</button><button class="btn sm ghost" data-act="transfer">${ic("transfer",14)} Transfer</button></div>`:""}</div><div class="pad" style="padding-top:6px"><div class="chips">${(t.access||[]).filter(id=>id!==t.ownerId).map(id=>`<span class="pill nodot p-slate" style="height:28px;padding-left:4px">${avatar(id,20)} ${esc(nameOf(id))}</span>`).join("")||'<span class="muted">Only the owner.</span>'}</div>${(t.transfers||[]).filter(x=>x.status==="PENDING").map(x=>`<div class="info" style="margin-top:10px;align-items:center;flex-wrap:wrap">${ic("transfer",16)}<span style="flex:1">Transfer to <b>${esc(nameOf(x.to))}</b> is waiting for them to accept.</span>${x.to===S.me||(canApproveT("approve_transfer",t)&&x.by!==S.me)?`<span class="row"><button class="btn sm primary" data-decide="transfer|${t.id}|${x.id}|APPROVE">${x.to===S.me?"Accept":"Approve"}</button><button class="btn sm" data-decide="transfer|${t.id}|${x.id}|REJECT">Reject</button></span>`:""}</div>`).join("")}</div></section>
     <section class="card"><div class="card-h"><div><h2>${ic("activity",17)}History</h2><p>Every change, newest first.</p></div></div><ul class="hist" style="margin:8px 20px 20px 26px">${[...(t.history||[])].reverse().map(h=>`<li><b>${esc(nameOf(h.by))}</b> ${esc(h.text)}<small>${fmtT(h.at)} IST</small></li>`).join("")||"<li class='muted'>No history.</li>"}</ul></section>
     </div></aside>`;
   layer.querySelector(".sheet").scrollTop = scroll;
-  const more = $("#sheetMore"); if (more) more.onclick = () => openMenu(more, [
-    { key:"flag", label:t.flagged?"Remove flag":"Flag", icon:"flag", run:()=>act("flag",t) },
-    ...(can("star")?[{ key:"star", label:t.starred?"Unstar":"Star", icon:"star", run:()=>act("star",t) }]:[]),
-    { key:"share", label:"Share with someone", icon:"share", run:()=>act("share",t) },
-    { key:"copy", label:"Copy task ID", icon:"copy", run:()=>copyText(t.id) },
-    ...(act&&(own||p)?[{ key:"drop", label:"Drop task", icon:"x", run:()=>act("drop",t) }]:[]),
-    "-", { key:"bin", label:can("bin")?"Move to Recycle Bin":"Request removal", icon:"trash", danger:true, run:()=>act("bin",t) },
-  ]);
 }
+const canBinT = (t) => can("bin") || t.ownerId===S.me;
 const reqPill = (s) => `<span class="pill ${s==="APPROVED"?"p-green":s==="REJECTED"?"p-red":s==="PENDING"?"p-amber":"p-slate"}">${s[0]+s.slice(1).toLowerCase()}</span>`;
 
 // ---------- task actions ----------
+const defaultReviewer = (t) => [t.createdBy, leadOf(t.ownerId), projOf(t)?.leaderId, S.ownerId].find(x=>x && x!==t.ownerId) || "";
+const seriesOf = (t) => t.seriesId ? S.recurring.get(t.seriesId) : null;
+async function completeTask(t, extraText=""){
+  const sr = seriesOf(t);
+  const done = (v={}) => { const n = { ...t, status:"COMPLETED", completedOn: todayIso(), completedAt: Date.now(), completedBy: t.ownerId }; if (t.esc?.active) n.esc = { ...t.esc, active:false, resolution:"Task completed", resolvedBy:S.me }; if (v.next) n.followup = v.next; return n; };
+  if (sr && sr.cadence==="FLEXI") return modal({ title:"Mark this occurrence done", icon:"check", tone:"t-green", intro:`<b>${esc(sr.title)}</b> repeats on a flexible schedule. Pick the follow-up date: the next occurrence is created for it.`, submit:"Mark done", fields:[{ name:"next", label:"Follow-up date (next occurrence)", type:"date", required:true, min:addDays(todayIso(),1) }], run: async v => { const ok = await saveTask(done(v), `marked the occurrence done; next on ${fmtD(v.next)}${extraText}`); if (ok) { await S.db.doc("recurring/"+sr.id).set({ ...sr, nextDate:v.next, lastGenerated:todayIso() }); toast(`Done. Next occurrence ${fmtD(v.next)}`); setTimeout(generateRecurring, 300); } return ok; } });
+  if (await saveTask(done(), `changed status to Completed${extraText}`)) toast(todayIso()<=t.deadline ? "Completed on time" : "Completed (late)");
+}
 async function setStatus(t, to){
+  if (!t || to===t.status) return;
   const label = STATUS[to][0];
-  if (t.status==="COMPLETED" || t.status==="DROPPED") return modal({ title:"Reopen task", icon:"restore", fields:[{name:"reason",label:"Why is it being reopened?",type:"textarea",required:true}], submit:"Reopen", run: v => saveTask({ ...t, status:to, completedOn:null }, `reopened the task: ${v.reason}`) });
+  if (t.status==="FOR_REVIEW" && to!=="COMPLETED") return modal({ title:"Take it out of review?", icon:"restore", intro:`It's with ${esc(nameOf(t.review?.reviewerId))}. Changing the status withdraws it.`, submit:`Move to ${label}`, fields:[{name:"reason",label:"Reason",type:"textarea",required:true}], run: v => saveTask({ ...t, status:to, reviews:[...(t.reviews||[]), { at:Date.now(), by:S.me, decision:"WITHDRAWN", reason:v.reason }] }, `withdrew the review and moved it to ${label}: ${v.reason}`) });
+  if (t.status==="COMPLETED" || t.status==="DROPPED") return modal({ title:"Reopen task", icon:"restore", fields:[{name:"reason",label:"Why is it being reopened?",type:"textarea",required:true}], submit:"Reopen", run: v => saveTask({ ...t, status:to, completedOn:null, completedAt:null, completedBy:null }, `reopened the task (${label}): ${v.reason}`) });
   if (to==="ON_HOLD") return modal({ title:"Put on hold", icon:"pause", tone:"t-amber", fields:[{name:"reason",label:"Reason",type:"textarea",required:true,placeholder:"What is it waiting for?"}], submit:"Put on hold", run: v => saveTask({ ...t, status:to }, `put the task on hold: ${v.reason}`) });
-  const n = { ...t, status:to, completedOn: to==="COMPLETED" ? todayIso() : t.completedOn };
-  if (to==="COMPLETED" && t.esc?.active) n.esc = { ...t.esc, active:false, resolution:"Task completed", resolvedBy:S.me };
-  if (await saveTask(n, `changed status to ${label}`)) toast(to==="COMPLETED" ? (todayIso()<=t.deadline ? "Completed on time" : "Completed (late)") : label);
+  if (to==="FOR_REVIEW") { const def = defaultReviewer(t); return modal({ title:"Send for review", icon:"approve", tone:"t-violet", intro:"The reviewer gets it as a task to accept or send back. Timeliness counts from the first time it's submitted.", submit:"Send for review", fields:[{ name:"reviewer", label:"Reviewer", type:"select", required:true, value:def, options:people().filter(x=>x.id!==t.ownerId).map(x=>({value:x.id,label:x.name})) },{ name:"note", label:"Note for the reviewer", type:"textarea" }], run: async v => { const now = Date.now(), n = { ...t, status:"FOR_REVIEW", review:{ reviewerId:v.reviewer, submittedAt:now, submittedOn:todayIso(), firstSubmittedOn:t.review?.firstSubmittedOn||todayIso(), by:S.me, note:v.note }, reviews:[...(t.reviews||[]), { at:now, by:S.me, decision:"SUBMITTED", reviewerId:v.reviewer, note:v.note }] }; grant(n, v.reviewer); const ok = await saveTask(n, `sent the task for review to ${nameOf(v.reviewer)}${v.note?`: ${v.note}`:""}`); if (ok) toast(`Sent to ${nameOf(v.reviewer)} for review`); return ok; } }); }
+  if (to==="COMPLETED") return completeTask(t);
+  if (await saveTask({ ...t, status:to }, `changed status to ${label}`)) toast(label);
 }
 function act(kind, t){
   const p = can("assign");
+  if (kind==="rv_accept") return modal({ title:"Accept and complete", icon:"check", tone:"t-green", intro:`Completion counts from the first submission on <b>${fmtD(t.review?.firstSubmittedOn)}</b>, so a slow review never makes it late.`, submit:"Accept", fields:[{ name:"note", label:"Note (optional)", type:"textarea" }], run: async v => { const now = Date.now(), n = { ...t, status:"COMPLETED", completedOn:t.review?.firstSubmittedOn||todayIso(), completedAt:now, completedBy:t.ownerId, reviewedBy:S.me, reviews:[...(t.reviews||[]), { at:now, by:S.me, decision:"ACCEPTED", note:v.note }] }; if (t.esc?.active) n.esc = { ...t.esc, active:false, resolution:"Task completed", resolvedBy:S.me }; const ok = await saveTask(n, `accepted the review and completed the task${v.note?`: ${v.note}`:""}`); if (ok) toast("Accepted and completed"); return ok; } });
+  if (kind==="rv_reject") return modal({ title:"Send back", icon:"x", danger:true, intro:"It goes back to the owner as In progress. The first submission date and this rejection stay in the history.", submit:"Send back", fields:[{ name:"reason", label:"What needs to change?", type:"textarea", required:true }], run: v => saveTask({ ...t, status:"IN_PROGRESS", reviews:[...(t.reviews||[]), { at:Date.now(), by:S.me, decision:"REJECTED", reason:v.reason }] }, `sent the task back from review: ${v.reason}`) });
+  if (kind==="rv_pass") return modal({ title:"Pass the review on", icon:"transfer", intro:"Someone else reviews it instead.", submit:"Pass on", fields:[{ name:"to", label:"New reviewer", type:"select", required:true, options:people().filter(x=>x.id!==t.ownerId && x.id!==t.review?.reviewerId).map(x=>({value:x.id,label:x.name})) },{ name:"reason", label:"Reason", type:"textarea", required:true }], run: v => { const n = { ...t, review:{ ...t.review, reviewerId:v.to }, reviews:[...(t.reviews||[]), { at:Date.now(), by:S.me, decision:"PASSED", reviewerId:v.to, reason:v.reason }] }; grant(n, v.to); return saveTask(n, `passed the review to ${nameOf(v.to)}: ${v.reason}`); } });
+  if (kind==="rv_withdraw") return setStatus(t, "IN_PROGRESS");
+  if (kind==="link") return modal({ title:"Output link", icon:"link", intro:"Where the finished work lives: a sheet, doc, listing or folder.", submit:"Save", fields:[{ name:"url", label:"Link", value:t.outputLink||"", placeholder:"https://", check:(v)=> v && !/^https?:\/\/\S+\.\S+/.test(v) ? "Enter a full link starting with https://" : "" }], run: v => saveTask({ ...t, outputLink:v.url||null }, v.url?`set the output link`:`removed the output link`) });
+  if (kind==="comment") return modal({ title:"Add a comment", icon:"send", submit:"Post comment", fields:[{ name:"text", label:"Comment", type:"textarea", required:true }], run: v => saveTask({ ...t, comments:[...(t.comments||[]), { id:uid(), by:S.me, at:Date.now(), text:v.text }] }, `commented: ${v.text.slice(0,120)}`) });
+  if (kind==="subtask") return modal({ title:"Add a subtask", icon:"plus", wide:true, intro:`Under <b>${esc(t.name)}</b>. Same required fields as a task. Subtasks can't have their own subtasks.`, submit:"Create subtask", fields:[
+    { name:"name", label:"Subtask name", required:true, check:(v)=>v.length<3?"At least 3 characters.":"" },
+    { name:"owner", label:"Owner", type:"select", required:true, value:t.ownerId, options:people().map(x=>({value:x.id,label:x.name+(x.id===S.me?" (me)":"")})) },
+    { name:"priority", label:"Priority", type:"select", required:true, value:String(t.priority), options:[0,1,2,3,4,5].map(x=>({value:String(x),label:`P${x} · ${["Critical","Urgent","High","Normal","Low","Backlog"][x]}`})) },
+    { name:"deadline", label:"Deadline", type:"date", required:true, value:t.deadline, min:todayIso(), check:(v)=> v<todayIso() ? "The deadline can't be in the past." : "" },
+    { name:"description", label:"Description", type:"textarea" },
+  ], run: async v => {
+    if (t.parentId) throw new Error("A subtask can't have its own subtasks.");
+    const code = (nameOf(S.me).replace(/[^A-Za-z]/g,"").toUpperCase()+"XXX").slice(0,3), id = `${code}-${todayIso().replace(/-/g,"").slice(2)}-${uid().slice(0,4).toUpperCase()}`;
+    const peer = v.owner!==S.me && !can("assign") && !isProjLead(t) && t.ownerId!==S.me;
+    const c = { id, parentId:t.id, name:v.name, channel:t.channel, ownerId: peer ? S.me : v.owner, createdBy:S.me, priority:+v.priority, status:"NOT_STARTED", deadline:v.deadline, originalDeadline:v.deadline, followup:null, description:v.description, projectId:t.projectId||null, pocType:null, pocName:null, pendingSince:null, flagged:false, starredBy:[], deleted:false, access:[...new Set([t.ownerId, S.me])].filter(x=>x!==v.owner), extensions:[], waivers:[], transfers:[], removals:[], createdAt:Date.now(), history:[] };
+    if (peer) c.transfers.push({ id:uid(), from:S.me, to:v.owner, by:S.me, reason:`Subtask of ${t.id}`, status:"PENDING", at:Date.now() });
+    if (v.owner!==S.me) grant(c, v.owner);
+    const ok = await saveTask(c, `created the subtask under ${t.id}${v.owner!==S.me?` for ${nameOf(v.owner)}`:""}`);
+    if (ok) { await saveTask({ ...S.tasks.get(t.id) }, `added the subtask "${v.name}" (${id})`); toast(`Subtask ${id} created`); }
+    return ok;
+  }});
   if (kind==="flag") return saveTask({ ...t, flagged:!t.flagged }, t.flagged?"removed the flag":"flagged the task").then(ok=>ok&&toast(t.flagged?"Flag removed":"Flagged"));
-  if (kind==="star") return can("star") && saveTask({ ...t, starred:!t.starred }, t.starred?"unstarred the task":"starred the task").then(ok=>ok&&toast(t.starred?"Unstarred":"Starred"));
+  if (kind==="star") { const on = starredByMe(t), sb = on ? (t.starredBy||[]).filter(x=>x!==S.me) : [...(t.starredBy||[]), S.me]; return saveTask({ ...t, starredBy:sb }, null).then(ok=>ok&&toast(on?"Unstarred":"Starred")); }
   if (kind==="edit") return modal({ title:"Edit task", icon:"edit", wide:true, intro:"The deadline changes only through an extension request.", submit:"Save changes", fields:[
     { name:"name", label:"Task name", value:t.name, required:true, check:(v)=>v.length<3?"At least 3 characters.":"" },
     { name:"channel", label:"Channel", type:"select", required:true, value:t.channel, options:S.config.channels.map(c=>({value:c,label:c})) },
@@ -1813,9 +1972,12 @@ function act(kind, t){
     { name:"followup", label:"Follow-up date", type:"date", value:t.followup||"" },
     { name:"projectId", label:"Project", type:"select", value:t.projectId||"", placeholder:"No project", options:[...S.projects.values()].map(x=>({value:x.id,label:x.name})) },
     { name:"pocType", label:"Pending From", type:"select", value:t.pocType||"", placeholder:"Not waiting on anyone", options:Object.entries(POC).map(([k,l])=>({value:k,label:l})) },
-    { name:"pocName", label:"POC name", value:t.pocName||"", showIf:"pocType", check:(val,v)=> (v.pocType && !val) ? "POC name is required when Pending From is set." : "" },
+    { name:"pocMember", label:"Team member", type:"select", value:t.pocMemberId||"", options:people().filter(x=>x.id!==t.ownerId).map(x=>({value:x.id,label:x.name})), check:(val,v)=> v.pocType==="I" && !val ? "Pick the team member." : "" },
+    { name:"pocName", label:"POC name", value:t.pocType!=="I"?(t.pocName||""):"", check:(val,v)=> (v.pocType && v.pocType!=="I" && !val) ? "POC name is required when Pending From is set." : "" },
+    { name:"outputLink", label:"Output link", value:t.outputLink||"", placeholder:"https://", check:(v)=> v && !/^https?:\/\/\S+\.\S+/.test(v) ? "Enter a full link starting with https://" : "" },
     { name:"description", label:"Description", type:"textarea", value:t.description||"" },
-  ], onMount:(form)=>{ const sync=()=>{ const w=form.querySelector('[data-wrap="pocName"]'); w.hidden=!form.elements.pocType.value; }; form.elements.pocType.addEventListener("change",sync); sync(); }, run: async v => {
+  ], onMount:(form)=>{ const sync=()=>{ const pt=form.elements.pocType.value; form.querySelector('[data-wrap="pocName"]').hidden=!pt||pt==="I"; form.querySelector('[data-wrap="pocMember"]').hidden=pt!=="I"; }; form.elements.pocType.addEventListener("change",sync); sync(); }, run: async v => {
+    if (v.pocType==="I") v.pocName = nameOf(v.pocMember);
     const changes = [];
     if (v.name!==t.name) changes.push("renamed the task");
     if (+v.priority !== t.priority) changes.push(`priority P${t.priority} → P${v.priority}`);
@@ -1823,36 +1985,39 @@ function act(kind, t){
     if ((v.pocType||null)!==(t.pocType||null) || (v.pocType && v.pocName!==t.pocName)) changes.push(v.pocType?`Pending From: ${POC[v.pocType]} · ${v.pocName}`:"cleared Pending From");
     if ((v.followup||null)!==(t.followup||null)) changes.push(`follow-up ${v.followup?fmtD(v.followup):"cleared"}`);
     if ((v.projectId||null)!==(t.projectId||null)) changes.push(v.projectId?`project ${S.projects.get(v.projectId)?.name}`:"removed from project");
-    const n = { ...t, name:v.name, channel:v.channel, priority:+v.priority, followup:v.followup||null, projectId:v.projectId||null, pocType:v.pocType||null, pocName:v.pocType?v.pocName:null, pendingSince: v.pocType ? (t.pocType ? t.pendingSince : Date.now()) : null, description:v.description };
+    const n = { ...t, name:v.name, channel:v.channel, priority:+v.priority, followup:v.followup||null, projectId:v.projectId||null, pocType:v.pocType||null, pocName:v.pocType?v.pocName:null, pocMemberId:v.pocType==="I"?v.pocMember:null, outputLink:v.outputLink||null, pendingSince: v.pocType ? (t.pocType ? t.pendingSince : Date.now()) : null, description:v.description };
     const ok = await saveTask(n, changes.length ? changes.join("; ") : "edited details"); if (ok) toast("Task updated"); return ok;
   }});
   if (kind==="escalate") return modal({ title:"Escalate task", icon:"flame", danger:true, intro:"For urgent work that needs someone senior to step in. Waiting on a POC alone isn't an escalation.", submit:"Escalate", fields:[
     { name:"level", label:"Escalate to", type:"radio", required:true, requiredMsg:"Pick a level.", options:["L1","L2","L3"].map(l=>({ value:l, label:l, hint:S.config.levels?.[l]?nameOf(S.config.levels[l]):"Not assigned" })) },
     { name:"reason", label:"What's blocked and what do you need?", type:"textarea", required:true },
-  ], run: async v => { const a = S.config.levels?.[v.level]; if (!a) throw new Error(`No ${v.level} owner is set. An Admin assigns one in User management.`); const n = { ...t, esc:{ active:true, level:v.level, assignee:a, reason:v.reason, by:S.me, at:Date.now(), path:["L0",v.level] } }; grant(n, a); const ok = await saveTask(n, `escalated to ${v.level} (${nameOf(a)}): ${v.reason}`); if (ok) toast(`Escalated to ${nameOf(a)}`); return ok; }});
+  ], run: async v => { const a = S.config.levels?.[v.level]; if (!a) throw new Error(`No ${v.level} owner is set yet. An Admin sets L1, L2 and L3 in Settings → Escalation owners.`); const n = { ...t, esc:{ active:true, level:v.level, assignee:a, reason:v.reason, by:S.me, at:Date.now(), path:["L0",v.level] } }; grant(n, a); const ok = await saveTask(n, `escalated to ${v.level} (${nameOf(a)}): ${v.reason}`); if (ok) toast(`Escalated to ${nameOf(a)}`); return ok; }});
   if (kind==="reassign") return modal({ title:"Reassign escalation", icon:"transfer", intro:`Currently ${t.esc.level} · ${esc(nameOf(t.esc.assignee))}.`, submit:"Reassign", fields:[
     { name:"level", label:"Move to", type:"radio", required:true, requiredMsg:"Pick a level.", options:["L1","L2","L3"].filter(l=>l!==t.esc.level).map(l=>({ value:l, label:l, hint:S.config.levels?.[l]?nameOf(S.config.levels[l]):"Not assigned" })) },
     { name:"reason", label:"Reason", type:"textarea", required:true },
-  ], run: async v => { const a = S.config.levels?.[v.level]; if (!a) throw new Error(`No ${v.level} owner is set.`); const n = { ...t, esc:{ ...t.esc, level:v.level, assignee:a, path:[...(t.esc.path||[]), v.level] } }; grant(n, a); return saveTask(n, `reassigned the escalation ${t.esc.level} → ${v.level}: ${v.reason}`); }});
+  ], run: async v => { const a = S.config.levels?.[v.level]; if (!a) throw new Error(`No ${v.level} owner is set yet. An Admin sets them in Settings → Escalation owners.`); const n = { ...t, esc:{ ...t.esc, level:v.level, assignee:a, path:[...(t.esc.path||[]), v.level] } }; grant(n, a); return saveTask(n, `reassigned the escalation ${t.esc.level} → ${v.level}: ${v.reason}`); }});
   if (kind==="resolve") return modal({ title:"Resolve escalation", icon:"check", tone:"t-green", intro:"Closes the escalation only. The task's status doesn't change.", submit:"Resolve", fields:[{ name:"note", label:"Resolution notes", type:"textarea", required:true }], run: async v => { const ok = await saveTask({ ...t, esc:{ ...t.esc, active:false, resolution:v.note, resolvedBy:S.me } }, `resolved the escalation: ${v.note}`); if (ok) toast("Escalation resolved"); return ok; } });
   if (kind==="ext") return modal({ title:"Request a deadline extension", icon:"calendar", tone:"t-amber", intro:`Current deadline <b>${fmtD(t.deadline)}</b>. It stays until an approver accepts.${t.status==="COMPLETED"?" This task is completed: approval only changes how the deadline counts.":""}`, submit:"Send request", fields:[
     { name:"to", label:"New deadline", type:"date", required:true, min:addDays(t.deadline,1), check:(v)=> v<=t.deadline ? "Pick a date after the current deadline." : "" },
     { name:"reason", label:"Reason", type:"textarea", required:true },
     { name:"withWaiver", label:"Also request a penalty waiver", type:"checkbox", hint:"Decided separately from the extension." },
     { name:"waiverReason", label:"Why should the penalty be waived?", type:"textarea", showIf:"withWaiver", check:(val,v)=> v.withWaiver && !val ? "Explain the waiver, or untick it." : "" },
-  ], run: async v => { const x = { id:uid(), from:t.deadline, to:v.to, reason:v.reason, by:S.me, at:Date.now(), status:"PENDING", afterCompletion:t.status==="COMPLETED" }; const n = { ...t, extensions:[...(t.extensions||[]), x] }; if (v.withWaiver) n.waivers = [...(t.waivers||[]), { id:uid(), extId:x.id, reason:v.waiverReason, by:S.me, at:Date.now(), status:"PENDING" }]; const ok = await saveTask(n, `requested an extension to ${fmtD(v.to)}${v.withWaiver?" and a waiver":""}: ${v.reason}`); if (ok) toast("Request sent to Admin and Leadership"); return ok; }});
+  ], run: async v => { if (pendingOf(t,"extensions").some(x=>x.to===v.to)) throw new Error(`An extension to ${fmtD(v.to)} is already waiting for a decision.`); const x = { id:uid(), from:t.deadline, to:v.to, reason:v.reason, by:S.me, at:Date.now(), status:"PENDING", afterCompletion:t.status==="COMPLETED" }; const n = { ...t, extensions:[...(t.extensions||[]), x] }; if (v.withWaiver) n.waivers = [...(t.waivers||[]), { id:uid(), extId:x.id, reason:v.waiverReason, by:S.me, at:Date.now(), status:"PENDING" }]; const ok = await saveTask(n, `requested an extension to ${fmtD(v.to)}${v.withWaiver?" and a waiver":""}: ${v.reason}`); if (ok) toast("Request sent to Admin and Leadership"); return ok; }});
   if (kind==="waiver") return modal({ title:"Request a penalty waiver", icon:"approve", tone:"t-violet", intro:"Decided on its own. It never changes the deadline.", submit:"Send request", fields:[
     { name:"extId", label:"Related extension", type:"select", placeholder:"None", options:(t.extensions||[]).map(x=>({ value:x.id, label:`${fmtD(x.from)} → ${fmtD(x.to)} (${x.status.toLowerCase()})` })) },
+    { name:"lateCompletion", label:"Late-completion waiver", type:"checkbox", hint:"If approved, a late completion of this task counts as on time. It never adds extra points." },
     { name:"reason", label:"Reason", type:"textarea", required:true },
-  ], run: async v => { const ok = await saveTask({ ...t, waivers:[...(t.waivers||[]), { id:uid(), extId:v.extId||null, reason:v.reason, by:S.me, at:Date.now(), status:"PENDING" }] }, `requested a waiver: ${v.reason}`); if (ok) toast("Waiver request sent"); return ok; } });
+  ], run: async v => { if (pendingOf(t,"waivers").some(w=>(w.extId||"")===(v.extId||"") && !!w.lateCompletion===!!v.lateCompletion)) throw new Error("The same waiver is already waiting for a decision."); const ok = await saveTask({ ...t, waivers:[...(t.waivers||[]), { id:uid(), extId:v.extId||null, lateCompletion:!!v.lateCompletion, reason:v.reason, by:S.me, at:Date.now(), status:"PENDING" }] }, `requested a ${v.lateCompletion?"late-completion ":""}waiver: ${v.reason}`); if (ok) toast("Waiver request sent"); return ok; } });
   if (kind==="share") return modal({ title:"Share this task", icon:"share", intro:"They'll see this task only, not the owner's other work.", submit:"Share", fields:[{ name:"who", label:"Person", type:"select", required:true, options:people().filter(x=>x.id!==t.ownerId && !(t.access||[]).includes(x.id)).map(x=>({value:x.id,label:x.name})) }], run: async v => { const n = { ...t }; grant(n, v.who); const ok = await saveTask(n, `shared the task with ${nameOf(v.who)}`); if (ok) toast(`Shared with ${nameOf(v.who)}`); return ok; } });
   if (kind==="transfer") return modal({ title:"Transfer ownership", icon:"transfer", intro: p ? "You can assign directly, so it moves right away." : "They must accept before it moves to them.", submit: p ? "Transfer" : "Send request", fields:[{ name:"to", label:"New owner", type:"select", required:true, options:people().filter(x=>x.id!==t.ownerId).map(x=>({value:x.id,label:x.name})) },{ name:"reason", label:"Reason", type:"textarea", required:true }], run: async v => {
     if (p) { const n = { ...t, ownerId:v.to }; grant(n, t.ownerId); n.access = (n.access||[]).filter(x=>x!==v.to); const ok = await saveTask(n, `transferred the task ${nameOf(t.ownerId)} → ${nameOf(v.to)}: ${v.reason}`); if (ok) toast(`Now owned by ${nameOf(v.to)}`); return ok; }
+    if (pendingOf(t,"transfers").length) throw new Error("A transfer request is already waiting. It must be decided first.");
     const n = { ...t, transfers:[...(t.transfers||[]), { id:uid(), from:t.ownerId, to:v.to, by:S.me, reason:v.reason, status:"PENDING", at:Date.now() }] }; grant(n, v.to); const ok = await saveTask(n, `asked ${nameOf(v.to)} to take over: ${v.reason}`); if (ok) toast(`Transfer request sent to ${nameOf(v.to)}`); return ok; } });
   if (kind==="drop") return modal({ title:"Drop this task?", icon:"x", danger:true, intro:"Dropped tasks leave open lists and don't count in KPIs. You can reopen it later.", submit:"Drop task", fields:[{ name:"reason", label:"Reason", type:"textarea", required:true }], run: v => saveTask({ ...t, status:"DROPPED" }, `dropped the task: ${v.reason}`) });
-  if (kind==="bin") return can("bin")
+  if (kind==="bin" && !canBinT(t) && pendingOf(t,"removals").length) { toast("A removal request for this task is already waiting for a decision.","info"); return; }
+  if (kind==="bin") return canBinT(t)
     ? modal({ title:"Move to Recycle Bin?", icon:"trash", danger:true, intro:"The task leaves every list but keeps its ID and history. It can be restored.", submit:"Move to Bin", fields:[{ name:"reason", label:"Reason", type:"textarea", required:true }], run: async v => { const ok = await saveTask({ ...t, deleted:true, deletedBy:S.me, deletedAt:Date.now(), deletedReason:v.reason }, `moved the task to the Bin: ${v.reason}`); if (ok) { S.open=null; toast("Moved to Recycle Bin"); } return ok; } })
-    : modal({ title:"Request removal?", icon:"trash", danger:true, intro:"Only Admin or Leadership can bin tasks. Your request goes to them.", submit:"Send request", fields:[{ name:"reason", label:"Reason", type:"textarea", required:true }], run: async v => { const ok = await saveTask({ ...t, removals:[...(t.removals||[]), { id:uid(), reason:v.reason, by:S.me, at:Date.now(), status:"PENDING" }] }, `asked to remove the task: ${v.reason}`); if (ok) toast("Removal request sent"); return ok; } });
+    : modal({ title:"Request removal?", icon:"trash", danger:true, intro:"Only the owner, Admin or Leadership can bin tasks. Your request goes to them.", submit:"Send request", fields:[{ name:"reason", label:"Reason", type:"textarea", required:true }], run: async v => { const ok = await saveTask({ ...t, removals:[...(t.removals||[]), { id:uid(), reason:v.reason, by:S.me, at:Date.now(), status:"PENDING" }] }, `asked to remove the task: ${v.reason}`); if (ok) toast("Removal request sent"); return ok; } });
 }
 function decide(kind, taskId, xid, d){
   const t = S.tasks.get(taskId); if (!t) return;
@@ -1860,10 +2025,14 @@ function decide(kind, taskId, xid, d){
   const x = (t[listKey]||[]).find(r=>r.id===xid); if (!x) return;
   const ok = d==="APPROVE";
   modal({ title:`${ok?(kind==="transfer"&&x.to===S.me?"Accept":"Approve"):"Reject"} ${kind}`, icon: ok?"check":"x", tone: ok?"t-green":"t-red", danger:!ok, intro: kind==="extension"&&ok ? `The deadline moves from <b>${fmtD(x.from)}</b> to <b>${fmtD(x.to)}</b>. Any waiver stays a separate decision.` : kind==="waiver" ? "This doesn't change the extension or the deadline." : kind==="removal"&&ok ? "The task moves to the Recycle Bin." : kind==="transfer"&&ok ? `${esc(nameOf(x.to))} becomes the owner.` : "", submit: ok?"Approve":"Reject", fields:[{ name:"note", label: ok?"Note (optional)":"Reason", type:"textarea", required:!ok }], run: async v => {
-    const n = { ...t, [listKey]: t[listKey].map(r => r.id===xid ? { ...r, status: ok?"APPROVED":"REJECTED", decidedBy:S.me, decidedAt:Date.now(), note:v.note } : r) };
+    const cur = S.tasks.get(taskId) || t, now = Date.now();
+    if (!(cur[listKey]||[]).some(r=>r.id===xid && r.status==="PENDING")) throw new Error("This request was already decided.");
+    const n = { ...cur, [listKey]: cur[listKey].map(r => r.id===xid ? { ...r, status: ok?"APPROVED":"REJECTED", decidedBy:S.me, decidedAt:now, note:v.note } : (kind==="extension"||kind==="removal") && r.status==="PENDING" ? { ...r, status:"REJECTED", decidedBy:S.me, decidedAt:now, auto:true, note:`Closed automatically: another ${kind} request on this task was decided.` } : r) };
     let text = `${ok?"approved":"rejected"} the ${kind}${v.note?`: ${v.note}`:""}`;
+    const closed = (cur[listKey]||[]).filter(r=>r.id!==xid && r.status==="PENDING").length;
+    if ((kind==="extension"||kind==="removal") && closed) text += `; ${closed} other pending ${kind} request${closed>1?"s":""} closed automatically`;
     if (ok && kind==="extension") { n.deadline = x.to; text += ` (deadline ${fmtD(x.from)} → ${fmtD(x.to)})`; }
-    if (ok && kind==="transfer") { grant(n, n.ownerId); n.ownerId = x.to; n.access = (n.access||[]).filter(a=>a!==x.to); text += ` (owner ${nameOf(x.from)} → ${nameOf(x.to)})`; }
+    if (ok && kind==="transfer") { grant(n, n.ownerId); n.transfers = n.transfers.map(r=>r.id===xid?{ ...r, effectiveAt:now }:r); n.ownerId = x.to; n.access = (n.access||[]).filter(a=>a!==x.to); text += ` (owner ${nameOf(x.from)} → ${nameOf(x.to)})`; }
     if (ok && kind==="removal") { n.deleted = true; n.deletedBy = S.me; n.deletedAt = Date.now(); n.deletedReason = x.reason; }
     const done = await saveTask(n, text); if (done) toast(`${kind[0].toUpperCase()+kind.slice(1)} ${ok?"approved":"rejected"}`); return done;
   }});
@@ -2061,7 +2230,7 @@ function viewMyWork(){
   const overdue = mine.filter(t=>t.deadline<today), dueToday = mine.filter(t=>t.deadline===today), soon = mine.filter(t=>t.deadline>today && t.deadline<=addDays(today,S.config.dueDays));
   const follow = mine.filter(t=>t.followup && t.followup<=addDays(today,S.config.followDays));
   const toAccept = visibleTasks().flatMap(t=>(t.transfers||[]).filter(x=>x.status==="PENDING"&&x.to===S.me).map(x=>({ t, x })));
-  const escMine = visibleTasks().filter(t=>t.esc?.active && t.esc.assignee===S.me);
+  const escMine = visibleTasks().filter(t=>t.esc?.active && t.esc.assignee===S.me), rvMine = visibleTasks().filter(inReviewWithMe);
   const reqs = myRequests().slice(0,6), k = kpiRows(today.slice(0,7)).find(r=>r.id===S.me);
   const focus = [...overdue.map(t=>[t,`<span class="pill p-red">${daysLate(t)}d overdue</span>`]), ...dueToday.map(t=>[t,`<span class="pill p-amber">Due today</span>`]), ...soon.map(t=>[t,`<span class="pill p-blue">Due ${fmtD(t.deadline)}</span>`]), ...follow.filter(t=>t.deadline>addDays(today,S.config.dueDays)).map(t=>[t,`<span class="pill p-violet">Follow-up ${fmtD(t.followup)}</span>`])];
   const stat = (n,l,go,icon,tone) => `<a class="stat" href="#${go}"><span class="sic ${tone}">${ic(icon,18)}</span><b>${n}</b><span>${l}</span></a>`;
@@ -2070,8 +2239,8 @@ function viewMyWork(){
   <div class="grid2">
     <section class="card"><div class="card-h"><div><h2>${ic("clock",18)}Today's focus</h2><p>Overdue first, then what's due soon and follow-ups.</p></div><a class="btn sm ghost" href="#tasks">All my tasks</a></div>${focus.length?`<div class="pad" style="display:grid;gap:8px;padding-top:6px">${focus.slice(0,8).map(([t,why])=>`<button class="mcard" style="border:1px solid var(--line);border-radius:12px" data-open="${t.id}"><span class="row spread"><span style="min-width:0">${prio(t.priority)} <b>${esc(t.name)}</b><br><small class="muted">${esc(t.channel)}${t.pocType?` · waiting on ${esc(t.pocName)}`:""}</small></span>${why}</span></button>`).join("")}</div>`:emptyState("check","You're all clear","Nothing overdue or due soon.")}</section>
     <div style="display:grid;gap:20px;align-content:start">
-      <section class="card"><div class="card-h"><div><h2>${ic("approve",18)}Waiting on you</h2><p>Transfers to accept and escalations assigned to you.</p></div></div>${toAccept.length||escMine.length?`<div class="pad" style="display:grid;gap:10px;padding-top:6px">${toAccept.map(({t,x})=>`<div class="box row spread"><span style="min-width:0"><span class="pill p-blue">Transfer</span> <b>${esc(t.name)}</b><br><small class="muted">From ${esc(nameOf(x.from))} · “${esc(x.reason)}”</small></span><span class="row"><button class="btn sm" data-decide="transfer|${t.id}|${x.id}|REJECT">Reject</button><button class="btn sm primary" data-decide="transfer|${t.id}|${x.id}|APPROVE">Accept</button></span></div>`).join("")}${escMine.map(t=>`<button class="mcard box" data-open="${t.id}"><span class="lvl ${t.esc.level}">${t.esc.level}</span> <b>${esc(t.name)}</b><br><small class="muted">Raised by ${esc(nameOf(t.esc.by))} · ${esc(t.esc.reason)}</small></button>`).join("")}</div>`:emptyState("approve","Nothing waiting on you")}</section>
-      <section class="card"><div class="card-h"><div><h2>${ic("gauge",18)}My KPI · ${fmtMonth(today.slice(0,7))}</h2><p>Updates as you complete tasks.</p></div><a class="btn sm ghost" href="#kpi">Details</a></div><div class="pad"><div class="kv"><div><small>Total</small><b style="font-size:24px">${k?k.total:"—"}</b></div><div><small>On time / late</small><b>${k?`${k.onTime} / ${k.late}`:"—"}</b></div><div><small>Discipline</small><b>${k?`${k.disc} of ${POLICY.disc}`:"—"}</b></div></div></div></section>
+      <section class="card"><div class="card-h"><div><h2>${ic("approve",18)}Waiting on you</h2><p>Reviews, transfers to accept and escalations assigned to you.</p></div></div>${toAccept.length||escMine.length||rvMine.length?`<div class="pad" style="display:grid;gap:10px;padding-top:6px">${rvMine.map(t=>`<button class="mcard box" data-open="${t.id}"><span class="pill p-violet">Review</span> <b>${esc(t.name)}</b><br><small class="muted">From ${esc(nameOf(t.ownerId))} · submitted ${fmtT(t.review?.submittedAt)}</small></button>`).join("")}${toAccept.map(({t,x})=>`<div class="box row spread"><span style="min-width:0"><span class="pill p-blue">Transfer</span> <b>${esc(t.name)}</b><br><small class="muted">From ${esc(nameOf(x.from))} · “${esc(x.reason)}”</small></span><span class="row"><button class="btn sm" data-decide="transfer|${t.id}|${x.id}|REJECT">Reject</button><button class="btn sm primary" data-decide="transfer|${t.id}|${x.id}|APPROVE">Accept</button></span></div>`).join("")}${escMine.map(t=>`<button class="mcard box" data-open="${t.id}"><span class="lvl ${t.esc.level}">${t.esc.level}</span> <b>${esc(t.name)}</b><br><small class="muted">Raised by ${esc(nameOf(t.esc.by))} · ${esc(t.esc.reason)}</small></button>`).join("")}</div>`:emptyState("approve","Nothing waiting on you")}</section>
+      <section class="card"><div class="card-h"><div><h2>${ic("gauge",18)}My KPI · ${fmtMonth(today.slice(0,7))}</h2><p>Updates as you complete tasks.</p></div><a class="btn sm ghost" href="#kpi">Details</a></div><div class="pad"><div class="kv">${ptsOk()?`<div><small>Total</small><b style="font-size:24px">${k?fmtPts(k.total):"—"}</b></div>`:""}<div><small>On time / late</small><b>${k?`${k.onTime} / ${k.late}`:"—"}</b></div><div><small>Extensions (waived)</small><b>${k?`${k.ext} (${k.waived})`:"—"}</b></div></div></div></section>
     </div>
   </div>
   <section class="card"><div class="card-h"><div><h2>${ic("send",18)}My requests</h2><p>Extensions, waivers, transfers and removals you've asked for.</p></div><a class="btn sm ghost" href="#requests">View all</a></div>${reqs.length?`<div class="tbl-wrap"><table><tr><th>Request</th><th>Task</th><th>Status</th><th>When</th></tr>${reqs.map(r=>`<tr class="click" data-open="${r.t.id}"><td><b>${r.kind}</b>${r.kind==="Extension"?`<br><small class="muted num">${fmtD(r.x.from)} → ${fmtD(r.x.to)}</small>`:r.kind==="Transfer"?`<br><small class="muted">to ${esc(nameOf(r.x.to))}</small>`:""}</td><td>${esc(r.t.name)}</td><td>${reqPill(r.x.status)}</td><td class="num" style="white-space:nowrap">${ago(r.x.decidedAt||r.x.at)}</td></tr>`).join("")}</table></div>`:emptyState("send","No requests yet","Request an extension or waiver from a task's detail panel.","")}</section>`;
@@ -2081,7 +2250,8 @@ function viewRequests(){
   const reqs = myRequests(), f = S.filters.reqSt || "";
   const rq = (S.filters.reqQ||"").toLowerCase();
   const list = reqs.filter(r=>(!f||r.x.status===f) && (!S.filters.reqKind || r.kind===S.filters.reqKind) && (!rq || (r.t.name+" "+r.t.id+" "+r.x.reason).toLowerCase().includes(rq)));
-  return `<section class="card"><div class="card-h"><div><h2>${ic("transfer",18)}Transfers to accept</h2><p>Tasks someone wants you to take over. They stay with the current owner until you accept.</p></div></div>${toAccept.length?toAccept.map(({t,x})=>`<div class="pad row spread" style="border-top:1px solid var(--line);padding-top:14px"><span style="min-width:0"><a href="#requests" data-open="${t.id}" style="font-weight:800;color:var(--fg);text-decoration:none">${esc(t.name)}</a> <span class="tid">${t.id}</span><br><small class="muted">From ${esc(nameOf(x.from))} · ${ago(x.at)} · “${esc(x.reason)}”</small></span><span class="row"><button class="btn sm" data-decide="transfer|${t.id}|${x.id}|REJECT">${ic("x",14)} Reject</button><button class="btn sm primary" data-decide="transfer|${t.id}|${x.id}|APPROVE">${ic("check",14)} Accept</button></span></div>`).join(""):emptyState("transfer","No transfers waiting")}</section>
+  const rvs = visibleTasks().filter(inReviewWithMe);
+  return `${rvs.length?`<section class="card"><div class="card-h"><div><h2>${ic("approve",18)}Reviews assigned to you</h2><p>Accept to complete the task, send it back, or pass it to someone else.</p></div></div>${taskTable(rvs, ["Submitted", t=>`${fmtT(t.review?.submittedAt)}<br><small class="muted">by ${esc(nameOf(t.ownerId))}</small>`], null, null)}</section>`:""}<section class="card"><div class="card-h"><div><h2>${ic("transfer",18)}Transfers to accept</h2><p>Tasks someone wants you to take over. They stay with the current owner until you accept.</p></div></div>${toAccept.length?toAccept.map(({t,x})=>`<div class="pad row spread" style="border-top:1px solid var(--line);padding-top:14px"><span style="min-width:0"><a href="#requests" data-open="${t.id}" style="font-weight:800;color:var(--fg);text-decoration:none">${esc(t.name)}</a> <span class="tid">${t.id}</span><br><small class="muted">From ${esc(nameOf(x.from))} · ${ago(x.at)} · “${esc(x.reason)}”</small></span><span class="row"><button class="btn sm" data-decide="transfer|${t.id}|${x.id}|REJECT">${ic("x",14)} Reject</button><button class="btn sm primary" data-decide="transfer|${t.id}|${x.id}|APPROVE">${ic("check",14)} Accept</button></span></div>`).join(""):emptyState("transfer","No transfers waiting")}</section>
   <div class="toolbar"><p class="lead">Requests you've raised and where they stand.</p><div class="seg">${[["","All"],["PENDING","Pending"],["APPROVED","Approved"],["REJECTED","Rejected"]].map(([v,l])=>`<button data-reqst="${v}" aria-pressed="${f===v}">${l}</button>`).join("")}</div></div>
   <section class="card">${miniBar(["reqQ","Search task or reason"],[["reqKind","Any type",[["Extension","Extension"],["Waiver","Waiver"],["Transfer","Transfer"],["Removal","Removal"]]]], shown(list.length, reqs.length, "request"))}${list.length?`<div class="tbl-wrap"><table><tr><th>Request</th><th>Task</th><th>Reason</th><th>Status</th><th>Decided by</th><th>When</th></tr>${list.map(r=>`<tr class="click" data-open="${r.t.id}"><td><b>${r.kind}</b>${r.kind==="Extension"?`<br><small class="muted num">${fmtD(r.x.from)} → ${fmtD(r.x.to)}</small>`:""}</td><td>${esc(r.t.name)}<br><span class="tid">${r.t.id}</span></td><td><small class="muted">${esc(r.x.reason)}</small></td><td>${reqPill(r.x.status)}</td><td>${r.x.decidedBy?esc(nameOf(r.x.decidedBy)):'<span class="faint">—</span>'}</td><td class="num" style="white-space:nowrap">${ago(r.x.decidedAt||r.x.at)}</td></tr>`).join("")}</table></div>`:emptyState("send","No requests here","")}</section>`;
 }
@@ -2094,7 +2264,7 @@ function viewConsole(){
   const lastMonth = (()=>{ const d = new Date(todayIso().slice(0,7)+"-01T00:00:00Z"); d.setUTCMonth(d.getUTCMonth()-1); return d.toISOString().slice(0,7); })();
   const steps = [
     [signed.length>1, "Invite your team", `${signed.length} signed in, ${ph.length} not yet`, `<button class="btn sm" data-invite>${ic("send",14)} Invite</button>`],
-    [lv.length===3, "Assign L1, L2 and L3 escalation owners", lv.length===3?lv.map(l=>`${l} ${nameOf(S.config.levels[l])}`).join(" · "):`${lv.length} of 3 set`, `<a class="btn sm" href="#users">Set owners</a>`],
+    [lv.length===3, "Assign L1, L2 and L3 escalation owners", lv.length===3?lv.map(l=>`${l} ${nameOf(S.config.levels[l])}`).join(" · "):`${lv.length} of 3 set`, `<a class="btn sm" href="#settings">Set owners</a>`],
     [(S.config.pocs||[]).length>0, "Save your POC list", `${(S.config.pocs||[]).length} saved`, `<a class="btn sm" href="#settings">Open settings</a>`],
     [!hasSample(), "Remove the sample data", hasSample()?"Sample tasks, projects and series are still in place":"Done", `<button class="btn sm" data-clear-sample>Remove</button>`],
     [S.kpi.has(lastMonth), `Close ${fmtMonth(lastMonth)} KPIs`, S.kpi.has(lastMonth)?"Closed":"Freezes last month's scores", `<button class="btn sm" data-kpi-close="${lastMonth}">Close month</button>`],
@@ -2170,6 +2340,16 @@ document.addEventListener("click", (e) => {
   const ts = el.closest("[data-tsort]"); if (ts) { const [k,col] = ts.dataset.tsort.split("|"); const f = tf(k), [cur,d] = (f.sort||"").split(":"); f.sort = cur!==col ? col : d==="desc" ? "" : col+":desc"; return render(); }
   if (S.tfOpen && !el.closest(".fpanel")) { S.tfOpen = null; render(); }
 
+  const tile = el.closest("[data-tile]"); if (tile) { const [scope,label,due] = tile.dataset.tile.split("|"); if (scope==="team" && !can("drill")) return; Object.assign(S.filters, { view: scope==="mine" ? "mine" : (wide()?"team":"mine"), status: label==="Done this month"?"COMPLETED":label==="In review"?"FOR_REVIEW":"active" }); const f = {}; if (due) f.due = due; if (label==="Escalated") f.esc = "any"; if (label==="Waiting on others") f.poc = "any"; if (label==="Follow-ups due") f.follow = "due"; (S.tf ||= {}).tasks = f; location.hash = "tasks"; return; }
+  const dub = el.closest("[data-dueb]"); if (dub) { S.filters.dueB = S.filters.dueB===dub.dataset.dueb ? "" : dub.dataset.dueb; return render(); }
+  const kt = el.closest("[data-kpitab]"); if (kt) { S.filters.kpiTab = kt.dataset.kpitab; return render(); }
+  if (el.closest("[data-mom-csv]")) { const csv = (S.momCsv||[]).map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n"); const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download = `kpi-month-on-month-${todayIso()}.csv`; document.body.appendChild(a); a.click(); a.remove(); return; }
+  if (el.closest("[data-save-levels]")) { const levels = {}; for (const l of ["L1","L2","L3"]) { const v = $("#lvl_"+l).value; if (v) levels[l] = v; } return saveConfig({ levels }, "Escalation owners saved"); }
+  if (el.closest("[data-save-kpi]")) return saveKpiPolicy();
+  const prv = el.closest("[data-poc-review]"); if (prv) return pocReview(prv.dataset.pocReview);
+  const od = el.closest("[data-occ-done]"); if (od) { e.preventDefault(); const t = S.tasks.get(od.dataset.occDone); return t && completeTask(t); }
+  const preq = el.closest("[data-purge-req]"); if (preq) { const t = S.tasks.get(preq.dataset.purgeReq); return modal({ title:"Request permanent delete", icon:"trash", danger:true, intro:"An Admin approves it. Until then the task stays in the Bin and can be restored.", submit:"Send request", fields:[{ name:"reason", label:"Reason", type:"textarea", required:true }], run: v => saveTask({ ...t, purgeReq:{ by:S.me, at:Date.now(), reason:v.reason, status:"PENDING" } }, `asked to delete the task for good: ${v.reason}`) }); }
+  const pdec = el.closest("[data-purge-decline]"); if (pdec) { const t = S.tasks.get(pdec.dataset.purgeDecline); return modal({ title:"Decline permanent delete", icon:"x", submit:"Decline", fields:[{ name:"reason", label:"Reason", type:"textarea", required:true }], run: v => saveTask({ ...t, purgeReq:{ ...t.purgeReq, status:"REJECTED", decidedBy:S.me, decidedAt:Date.now(), note:v.reason } }, `declined the permanent delete: ${v.reason}`) }); }
   const due = el.closest("[data-due]"); if (due) { S.filters.dueTeam = due.dataset.due==="1"; return render(); }
   const pend = el.closest("[data-pend]"); if (pend) { S.filters.pendType = pend.dataset.pend; return render(); }
   const ap = el.closest("[data-appr]"); if (ap) { S.filters.apprKind = ap.dataset.appr; return render(); }
@@ -2184,8 +2364,8 @@ document.addEventListener("click", (e) => {
   for (const k of ["skip","pause","resume"]) { const b = el.closest(`[data-rec-${k}]`); if (b) return recurringAction(k, S.recurring.get(b.getAttribute(`data-rec-${k}`))); }
   const kc = el.closest("[data-kpi-close]"); if (kc) { const m = kc.dataset.kpiClose; return confirmDialog({ title:`Close ${fmtMonth(m)}?`, body:"Scores are frozen as they are now. Later changes won't alter them unless the month is reopened.", confirm:"Close month", danger:false, icon:"check" }).then(async ok => { if (!ok) return; try { await S.db.doc("kpi/"+m).set({ month:m, rows:kpiRows(m), closedBy:S.me, closedAt:Date.now() }); toast(`${fmtMonth(m)} closed`); } catch { toast("Only an Admin can close a month.","error"); } }); }
   const kr = el.closest("[data-kpi-reopen]"); if (kr) { const m = kr.dataset.kpiReopen; return confirmDialog({ title:`Reopen ${fmtMonth(m)}?`, body:"Scores go back to being calculated live.", confirm:"Reopen" }).then(async ok => { if (ok) { await S.db.doc("kpi/"+m).delete(); toast("Month reopened"); } }); }
-  const rs = el.closest("[data-restore]"); if (rs) { const t = S.tasks.get(rs.dataset.restore); return modal({ title:"Restore task", icon:"restore", intro:"It comes back with the same ID, owner, deadline and history.", submit:"Restore", fields:[{name:"reason",label:"Reason",type:"textarea",required:true}], run: async v => { const ok = await saveTask({ ...t, deleted:false }, `restored the task: ${v.reason}`); if (ok) toast("Task restored"); return ok; } }); }
-  const pg = el.closest("[data-purge]"); if (pg) { const t = S.tasks.get(pg.dataset.purge); return modal({ title:"Permanently purge?", icon:"trash", danger:true, intro:`This can't be undone. <b>${esc(t.name)}</b> and its history are deleted.`, submit:"Purge permanently", fields:[{ name:"confirm", label:`Type ${t.id} to confirm`, required:true, check:(val)=> val!==t.id ? "Type the task ID exactly." : "" }], run: async () => { if (!can("purge")) throw new Error("You don't have purge access."); await S.db.doc("tasks/"+t.id).delete(); S.tasks.delete(t.id); render(); toast("Task purged"); } }); }
+  const rs = el.closest("[data-restore]"); if (rs) { const t = S.tasks.get(rs.dataset.restore); return modal({ title:"Restore task", icon:"restore", intro:"It comes back with the same ID, owner, deadline and history.", submit:"Restore", fields:[{name:"reason",label:"Reason",type:"textarea",required:true}], run: async v => { if (!(can("bin") || t.ownerId===S.me || t.deletedBy===S.me)) throw new Error("Only the owner, Admin or Leadership can restore this task."); const ok = await saveTask({ ...t, deleted:false, purgeReq:null }, `restored the task: ${v.reason}`); if (ok) toast("Task restored"); return ok; } }); }
+  const pg = el.closest("[data-purge]"); if (pg) { const t = S.tasks.get(pg.dataset.purge); return modal({ title:"Permanently purge?", icon:"trash", danger:true, intro:`<b>${esc(t.name)}</b> leaves the app for good. A copy and the scores before the delete are kept in the audit store, so an Admin can bring it back if needed. Live KPI months recalculate without it.`, submit:"Purge permanently", fields:[{ name:"confirm", label:`Type ${t.id} to confirm`, required:true, check:(val)=> val!==t.id ? "Type the task ID exactly." : "" }], run: async () => { if (!can("purge")) throw new Error("You don't have purge access."); await S.db.doc("tombstones/"+t.id).set({ id:t.id, task:t, purgedBy:S.me, purgedAt:Date.now(), requestedBy:t.purgeReq?.by||null, requestReason:t.purgeReq?.reason||null, kpiBefore:Object.fromEntries([...new Set([monthOf(t.createdAt||Date.now()), (t.completedOn||"").slice(0,7)].filter(Boolean))].map(m=>[m, kpiRows(m).find(r=>r.id===(t.completedBy||t.ownerId))||null])) }); await S.db.doc("tasks/"+t.id).delete(); S.tasks.delete(t.id); render(); toast("Task purged"); } }); }
   if (el.closest("[data-save-settings]")) return saveSettings(el.closest("[data-save-settings]"));
   if (el.closest("[data-user-add]")) return addUserModal();
   if (el.closest("[data-invite]")) return inviteModal();
@@ -2215,6 +2395,7 @@ document.addEventListener("change", (e) => {
   const tfs = e.target.closest("[data-tfs]"); if (tfs) { const [k,field] = tfs.dataset.tfs.split("|"); tf(k)[field] = tfs.value; return render(); }
   const tfa = e.target.closest("[data-tfadd]"); if (tfa && tfa.value) { const [k,field] = tfa.dataset.tfadd.split("|"); const f = tf(k); f[field] = [...new Set([...(f[field]||[]), tfa.value])]; return render(); }
   const km = e.target.closest("[data-kpi-month]"); if (km) { S.filters.kpiMonth = km.value; return render(); }
+  const ss = e.target.closest("[data-status-sel]"); if (ss) { const t = S.tasks.get(S.open), v = ss.value; renderSheet(); return setStatus(t, v); }
 });
 $("#hsearch").addEventListener("submit", (e) => { e.preventDefault(); const q = $("#hq").value.trim(); Object.assign(S.filters, { view:"team", status:"" }); (S.tf ||= {}).tasks = { q }; $("#hq").blur(); if (location.hash==="#tasks") render(); else location.hash = "tasks"; });
 document.addEventListener("keydown", (e) => {

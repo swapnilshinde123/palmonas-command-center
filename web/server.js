@@ -23,8 +23,8 @@ const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
 const PIN_LOGIN = process.env.PIN_LOGIN ? process.env.PIN_LOGIN === "true" : !GOOGLE_CLIENT_ID;
 const TOKENINFO_URL = process.env.GOOGLE_TOKENINFO_URL || "https://oauth2.googleapis.com/tokeninfo";
 let PUBLIC_COLS = new Set(["team", "roles", "config", "pins"]);
-const ALL_COLS = new Set(["tasks", "team", "roles", "config", "projects", "recurring", "kpi", "invitations", "pins"]);
-const ADMIN_COLS = new Set(["roles", "config", "invitations", "kpi"]);
+const ALL_COLS = new Set(["tasks", "team", "roles", "config", "projects", "recurring", "kpi", "invitations", "pins", "tombstones"]);
+const ADMIN_COLS = new Set(["roles", "config", "invitations", "kpi", "tombstones"]);
 const SEG = /^[A-Za-z0-9_\-.~:@+]{1,200}$/;
 const log = (level, msg, extra = {}) => console.log(JSON.stringify({ t: new Date().toISOString(), level, msg, ...extra }));
 
@@ -95,6 +95,18 @@ async function verifyGoogle(credential) {
   const verified = t.email_verified === true || t.email_verified === "true";
   if (t.aud !== GOOGLE_CLIENT_ID || !issOk || !verified || Number(t.exp) * 1000 < Date.now() || !t.email) return null;
   return { email: String(t.email).toLowerCase(), name: t.name || "" };
+}
+// Records the sign-in and closes any open invitation for this email, so User management shows the person as Active.
+async function markSignedIn(m, email) {
+  try {
+    const now = Date.now();
+    await store.put("team", m.id, { ...m.data, lastSignInAt: now, firstSignInAt: m.data.firstSignInAt || now });
+    let n = 0;
+    for (const inv of await store.list("invitations")) {
+      if (String(inv.data.email || "").toLowerCase() === email && ["PENDING", "EXPIRED"].includes(inv.data.status)) { await store.put("invitations", inv.id, { ...inv.data, status: "ACCEPTED", acceptedBy: m.id, acceptedAt: now }); n++; }
+    }
+    broadcast("team"); if (n) broadcast("invitations");
+  } catch (e) { log("error", "sign-in bookkeeping failed", { error: e.message }); }
 }
 async function memberByEmail(email) {
   return (await store.list("team")).find((m) => !m.data.removed && !m.data.linkedTo && String(m.data.email || "").toLowerCase() === email) || null;
@@ -218,6 +230,7 @@ const server = http.createServer(async (req, res) => {
       if (!g) return send(res, 401, { error: "Google sign-in didn't go through. Try again." });
       const m = await memberByEmail(g.email);
       if (!m) { log("warn", "google sign-in for unknown email", { email: g.email }); return send(res, 403, { error: `${g.email} isn't on the team yet. Ask an Admin to add this email in User management.` }); }
+      await markSignedIn(m, g.email);
       const tok = randomBytes(32).toString("base64url");
       await store.sessNew(sha(tok), m.id, new Date(Date.now() + SESSION_DAYS * 864e5));
       log("info", "signed in with google", { userId: m.id });
