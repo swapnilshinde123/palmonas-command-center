@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import { createNotifier, emailInfo, previewEmail } from "./mailer.js";
 import { loadCtx, canSeeTask, validateTaskWrite, canWriteProject, canWriteSeries, permsOf, pointsAllowed, stripPoints } from "./policy.js";
 import { runRecurring } from "./jobs.js";
+import { importRows, fetchSheetRows, sheetCsvUrl } from "./importer.js";
 
 const scrypt = promisify(scryptCb);
 const DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -25,8 +26,8 @@ const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
 const PIN_LOGIN = process.env.PIN_LOGIN ? process.env.PIN_LOGIN === "true" : !GOOGLE_CLIENT_ID;
 const TOKENINFO_URL = process.env.GOOGLE_TOKENINFO_URL || "https://oauth2.googleapis.com/tokeninfo";
 let PUBLIC_COLS = new Set(["team", "roles", "config", "pins"]);
-const ALL_COLS = new Set(["tasks", "team", "roles", "config", "projects", "recurring", "kpi", "invitations", "pins", "tombstones"]);
-const ADMIN_COLS = new Set(["roles", "config", "invitations", "kpi", "tombstones"]);
+const ALL_COLS = new Set(["tasks", "team", "roles", "config", "projects", "recurring", "kpi", "invitations", "pins", "tombstones", "integrations"]);
+const ADMIN_COLS = new Set(["roles", "config", "invitations", "kpi", "tombstones", "integrations"]);
 const SEG = /^[A-Za-z0-9_\-.~:@+]{1,200}$/;
 const log = (level, msg, extra = {}) => console.log(JSON.stringify({ t: new Date().toISOString(), level, msg, ...extra }));
 
@@ -177,13 +178,29 @@ async function body(req) {
   for await (const c of req) { size += c.length; if (size > 1_000_000) throw Object.assign(new Error("Too large"), { status: 413 }); chunks.push(c); }
   return chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {};
 }
+const canImport = (ctx, me) => { const P = permsOf(ctx, me); return !!(P.settings_manage || P.users_manage); };
+// Runs the Google Sheet sync and records the outcome on integrations/sheet.
+async function syncSheet(by) {
+  const doc = (await store.get("integrations", "sheet"))?.data;
+  if (!doc?.url || doc.enabled === false) return null;
+  let result;
+  try {
+    const rows = await fetchSheetRows(doc.url);
+    const out = await importRows(store, { rows, me: doc.connectedBy, source: "sheet", commit: true, onCreated: (t) => notifier.onTask(null, t, doc.connectedBy).catch(() => {}) });
+    result = { ok: true, at: Date.now(), by: by || "auto", summary: out.summary, problems: out.results.filter((r) => r.status === "error").slice(0, 50) };
+    if (out.summary.created) { broadcast("tasks"); log("info", "sheet sync created tasks", { count: out.summary.created }); }
+  } catch (e) { result = { ok: false, at: Date.now(), by: by || "auto", error: e.message }; log("warn", "sheet sync failed", { error: e.message }); }
+  await store.put("integrations", "sheet", { ...doc, last: result }); broadcast("integrations");
+  return result;
+}
 // What each person may read: tasks they can see, no KPI points for members, Admin-only audit copies.
 async function readView(col, me, rows) {
   if (!me) return publicView(col, rows).map((r) => col === "config" ? { ...r, data: { ...r.data, kpi: undefined, kpiHistory: undefined } } : r);
-  if (!["tasks", "kpi", "config", "tombstones"].includes(col)) return rows;
+  if (!["tasks", "kpi", "config", "tombstones", "integrations"].includes(col)) return rows;
   const ctx = await loadCtx(store);
   if (col === "tasks") return rows.filter((r) => canSeeTask(ctx, me, r.data));
   if (col === "tombstones") return permsOf(ctx, me).purge ? rows : [];
+  if (col === "integrations") return canImport(ctx, me) ? rows : [];
   if (pointsAllowed(ctx, me)) return rows;
   if (col === "config") return rows.map((r) => ({ ...r, data: { ...r.data, kpi: undefined, kpiHistory: undefined } }));
   return rows.map((r) => ({ ...r, data: { ...r.data, points: undefined, rows: r.data.rows ? stripPoints(r.data.rows) : undefined, previous: undefined } }));
@@ -199,6 +216,7 @@ const server = http.createServer(async (req, res) => {
     if (p === "/healthz") return send(res, 200, { ok: true });
     if (p.startsWith("/email-preview/") && !process.env.RENDER) { const m = previewEmail(p.split("/").pop()); res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" }); return res.end(m.html); }
     if (req.method === "GET" && (p === "/" || p === "/index.html")) { res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache", ...SEC_HEADERS }); return res.end(indexHtml); }
+    if (req.method === "GET" && p === "/vendor/xlsx.js") { res.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8", "Cache-Control": "public, max-age=604800, immutable", ...SEC_HEADERS }); return res.end(await readFile(path.join(DIR, "public", "vendor", "xlsx-0.20.3.full.min.js"))); }
     if (!p.startsWith("/api/")) return send(res, 404, { error: "Not found" });
     // Writes need a custom header, which cross-site forms can't send.
     if (req.method !== "GET" && req.headers["x-pcc"] !== "1") return send(res, 403, { error: "Missing request header" });
@@ -254,6 +272,27 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, { ok: true }, { "Set-Cookie": cookie(req, "", 0) });
     }
 
+    if (p.startsWith("/api/import") && req.method === "POST") {
+      if (!me) return send(res, 401, { error: "Sign in first." });
+      if (!canImport(await loadCtx(store), me)) return send(res, 403, { error: "Only an Admin can import tasks." });
+      const b = await body(req);
+      if (p === "/api/import") {
+        const out = await importRows(store, { rows: b.rows, me, source: "upload", commit: !!b.commit, onCreated: (t) => notifier.onTask(null, t, me).catch(() => {}) });
+        if (b.commit) { broadcast("tasks"); log("info", "bulk import", { by: me, ...out.summary }); }
+        return send(res, 200, out);
+      }
+      if (p === "/api/import/sheet") {
+        if (b.disconnect) { await store.del("integrations", "sheet"); broadcast("integrations"); return send(res, 200, { ok: true }); }
+        if (b.enabled !== undefined && !b.url) { const d = (await store.get("integrations", "sheet"))?.data; if (!d) return send(res, 404, { error: "No sheet connected." }); await store.put("integrations", "sheet", { ...d, enabled: !!b.enabled }); broadcast("integrations"); return send(res, 200, { ok: true }); }
+        if (!sheetCsvUrl(b.url)) return send(res, 400, { error: "Paste the full Google Sheets link (https://docs.google.com/spreadsheets/d/…)." });
+        let preview;
+        try { preview = await importRows(store, { rows: await fetchSheetRows(b.url), me, source: "sheet", commit: false }); } catch (e) { return send(res, 400, { error: e.message }); }
+        await store.put("integrations", "sheet", { url: String(b.url).trim(), enabled: true, connectedBy: me, connectedAt: Date.now() }); broadcast("integrations");
+        return send(res, 200, { ok: true, preview: preview.summary });
+      }
+      if (p === "/api/import/sheet/sync") { const r = await syncSheet(me); return r ? send(res, 200, r) : send(res, 404, { error: "No sheet connected, or syncing is paused." }); }
+      return send(res, 404, { error: "Not found" });
+    }
     const m = p.match(/^\/api\/(col|doc)\/([^/]+)(?:\/([^/]+))?$/);
     if (!m) return send(res, 404, { error: "Not found" });
     const [, kind, col, id] = m;
@@ -331,6 +370,7 @@ const server = http.createServer(async (req, res) => {
   notifier = createNotifier(store, log);
   const tick = () => runRecurring(store, log, broadcast).catch((e) => log("error", "recurring job failed", { error: e.message }));
   setTimeout(tick, 5000); setInterval(tick, 15 * 60000).unref();
+  setInterval(() => syncSheet().catch((e) => log("error", "sheet sync crashed", { error: e.message })), 10 * 60000).unref();
   indexHtml = (await readFile(path.join(DIR, "public", "index.html"), "utf8")).replace("<script>", `<script>window.__PCC_GOOGLE_CLIENT_ID=${JSON.stringify(GOOGLE_CLIENT_ID)};window.__PCC_PIN_LOGIN=${PIN_LOGIN};window.__PCC_EMAIL=${JSON.stringify(emailInfo())};</script><script>`);
   server.listen(PORT, () => log("info", "listening", { port: PORT, storage: DB_URL ? "postgres" : "file", google: !!GOOGLE_CLIENT_ID, pinLogin: PIN_LOGIN, email: emailInfo().provider || "off" }));
 })().catch((e) => { log("error", "startup failed", { error: e.message }); process.exit(1); });

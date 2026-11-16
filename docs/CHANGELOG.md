@@ -34,3 +34,9 @@ Not yet done (Phase 2 server enforcement): server-side permission checks, server
 - Analytics page for Admin/Leadership/team leaders: delivery trend, owner scorecard, pending dependencies and their ageing, dependency-related delays, repeated blockers, cross-owner subtasks, team bottlenecks, channel patterns, escalations. Admin chooses which sections show.
 - Pending From can be changed by anyone involved in the task. KPI dependency counts include cross-owner subtasks (reporting only).
 - A newly created task now opens straight after saving.
+
+## 2026-11-16 — Bulk task import (Admin)
+
+- Admin portal → Bulk import. Download an .xlsx template (example rows, "How to fill" and a "Lists" tab with live channels, owner emails and projects), upload .xlsx/.xls/.csv, check every row, then create. Rows with errors are listed and skipped; a Row ID (or name + owner + deadline) is never imported twice.
+- Google Sheet: paste a link to a sheet shared as "Anyone with the link can view"; the server checks it every 10 minutes (or on "Check now") and creates tasks for new rows, in the connecting Admin's name. Pause and disconnect supported.
+- Server: `web/importer.js`, `POST /api/import`, `/api/import/sheet`, `/api/import/sheet/sync` (Admin only), new Admin-only `integrations` collection. SheetJS 0.20.3 is served locally from `/vendor/xlsx.js`.

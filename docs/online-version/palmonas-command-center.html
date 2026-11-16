@@ -626,17 +626,17 @@ const ICONS = {
   restore:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/>', arrowL:'<path d="M19 12H5M12 19l-7-7 7-7"/>', userPlus:'<circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M19 8v6M16 11h6"/>',
   pause:'<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>', play:'<path d="M7 4v16l13-8z"/>', skip:'<path d="M5 4l10 8-10 8zM19 5v14"/>',
   logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>', share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>',
-  transfer:'<path d="M4 7h14l-3-3M20 17H6l3 3"/>', sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  transfer:'<path d="M4 7h14l-3-3M20 17H6l3 3"/>', upload:'<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>', download:'<path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>', sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
 };
 const ic = (k, s=18) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k]||""}</svg>`;
 const OPS = [["overview","Team overview","grid"],["tasks","All tasks","tasks"],["recurring","Recurring tasks","repeat"],["starred","Starred","star"],["new","Add Task","plus"],["approvals","Approvals","approve"],["escalations","Escalations","flame"],["due","Due Soon","clock"],["pending","Pending From","hourglass"]];
 const INSIGHTS = [["projects","Projects","folder"],["channels","Channels","store"],["kpi","KPI Scoreboard","gauge"],["analytics","Analytics","activity"],["activity","Activity log","activity"],["bin","Recycle Bin","trash"]];
 const PORTAL_NAV = {
-  admin: [["Administration",[["console","Admin console","settings"],["users","User management","users"],["roles","Roles & permissions","shield"],["settings","Settings","settings"],["emails","Notifications","inbox"]]],["Operations",OPS],["Insights",INSIGHTS]],
+  admin: [["Administration",[["console","Admin console","settings"],["users","User management","users"],["roles","Roles & permissions","shield"],["settings","Settings","settings"],["import","Bulk import","upload"],["emails","Notifications","inbox"]]],["Operations",OPS],["Insights",INSIGHTS]],
   leadership: [["Operations",OPS],["Insights",INSIGHTS],["Team",[["users","Team directory","users"],["roles","Roles & permissions","shield"]]]],
   user: [["My work",[["mywork","My Work","grid"],["tasks","My Tasks","tasks"],["recurring","Recurring tasks","repeat"],["starred","Starred","star"],["new","Add Task","plus"],["due","Due Soon","clock"],["pending","Pending From","hourglass"],["escalations","Escalations","flame"],["requests","Requests","approve"]]],["Organise",[["projects","Projects","folder"],["kpi","My KPI","gauge"],["bin","Recycle Bin","trash"]]]],
 };
-const VIEW_PERM = { console:()=>can("users_manage")||can("roles_manage")||can("settings_manage"), users:()=>can("users_manage")||wide(), settings:()=>can("settings_manage"), emails:()=>can("settings_manage"), activity:()=>can("activity_view"), bin:()=>true, analytics:()=>hasPerm(S.me,"view_all")||hasPerm(S.me,"view_team"), approvals:()=>canApproveAny(), overview:()=>true };
+const VIEW_PERM = { console:()=>can("users_manage")||can("roles_manage")||can("settings_manage"), users:()=>can("users_manage")||wide(), settings:()=>can("settings_manage"), emails:()=>can("settings_manage"), activity:()=>can("activity_view"), bin:()=>true, import:()=>hasPerm(S.me,"settings_manage")||hasPerm(S.me,"users_manage"), analytics:()=>hasPerm(S.me,"view_all")||hasPerm(S.me,"view_team"), approvals:()=>canApproveAny(), overview:()=>true };
 const viewOk = (v) => !VIEW_PERM[v] || VIEW_PERM[v]();
 const portalViews = (p) => new Set([...PORTAL_NAV[p].flatMap(([,items])=>items.map(i=>i[0])), "profile"]);
 const VIEWS = [
@@ -645,7 +645,7 @@ const VIEWS = [
   ["Team",[["users","User management","users"],["roles","Roles & permissions","shield"]]],
   ["Admin",[["settings","Settings","settings","admin"],["activity","Activity log","activity","priv"],["emails","Notifications","inbox","admin"]]],
 ];
-const TITLES = { mywork:"My Work", overview:"Team Overview", console:"Admin Console", requests:"Requests", home:"Command Center", tasks:"Tasks", new:"Add Task", due:"Due Soon & Follow-ups", pending:"Pending From", escalations:"Escalations", approvals:"Approvals", projects:"Projects", channels:"Channels", recurring:"Recurring tasks", starred:"Starred tasks", analytics:"Analytics", kpi:"KPI Scoreboard", bin:"Recycle Bin", users:"User management", roles:"Roles & permissions", settings:"Settings", activity:"Activity log", emails:"Notifications", profile:"My profile" };
+const TITLES = { mywork:"My Work", overview:"Team Overview", console:"Admin Console", requests:"Requests", home:"Command Center", tasks:"Tasks", new:"Add Task", due:"Due Soon & Follow-ups", pending:"Pending From", escalations:"Escalations", approvals:"Approvals", projects:"Projects", channels:"Channels", recurring:"Recurring tasks", starred:"Starred tasks", analytics:"Analytics", import:"Bulk import", kpi:"KPI Scoreboard", bin:"Recycle Bin", users:"User management", roles:"Roles & permissions", settings:"Settings", activity:"Activity log", emails:"Notifications", profile:"My profile" };
 
 // ---------- state ----------
 const S = { db:null, user:null, me:null, myEmail:"", isOwner:false, canWrite:true, tasks:new Map(), team:new Map(), roles:new Map(), projects:new Map(), recurring:new Map(), kpi:new Map(), tombs:new Map(), invites:new Map(), pins:new Map(), account:null, config:{ channels:CHANNELS_DEFAULT, levels:{}, dueDays:3, followDays:2, pocs:[] }, names:{}, emails:{}, view:"home", filters:{ view:"mine", q:"", channel:"", status:"active", poc:"", priority:"", owner:"" }, open:null, live:false, loaded:false };
@@ -836,7 +836,7 @@ function render(){
   renderShell();
   if (!S.loaded) return;
   const v = S.view, host = $("#view");
-  const fn = { mywork:viewMyWork, overview:viewHome, console:viewConsole, requests:viewRequests, home:viewHome, tasks:viewTasks, new:viewNew, due:viewDue, pending:viewPending, escalations:viewEsc, approvals:viewApprovals, projects:viewProjects, channels:viewChannels, recurring:viewRecurring, starred:viewStarred, analytics:viewAnalytics, kpi:viewKpi, bin:viewBin, users:viewUsers, roles:viewRoles, settings:viewSettings, activity:viewActivity, emails:viewEmails, profile:viewProfile }[v] || viewHome;
+  const fn = { mywork:viewMyWork, overview:viewHome, console:viewConsole, requests:viewRequests, home:viewHome, tasks:viewTasks, new:viewNew, due:viewDue, pending:viewPending, escalations:viewEsc, approvals:viewApprovals, projects:viewProjects, channels:viewChannels, recurring:viewRecurring, starred:viewStarred, analytics:viewAnalytics, import:viewImport, kpi:viewKpi, bin:viewBin, users:viewUsers, roles:viewRoles, settings:viewSettings, activity:viewActivity, emails:viewEmails, profile:viewProfile }[v] || viewHome;
   const ae = document.activeElement, keep = ae && ae.id && host.contains(ae) ? { id:ae.id, s:ae.selectionStart } : null;
   host.innerHTML = fn();
   if (v==="new") bindNew();
@@ -1881,6 +1881,78 @@ function viewKpi(){
   ${rows.length?`<div class="tbl-wrap"><table><tr>${full?"<th>#</th>":""}<th>Person</th><th class="r">Eligible tasks</th><th class="r">On time</th><th class="r">Late</th><th class="r">Late (waived)</th><th class="r">Ext. (waived)</th><th class="r">Missed recurring</th><th class="r">Deps I/WB/E</th>${pts?`<th class="r">Delivery /${P.wDelivery}</th><th class="r">Discipline /${P.wDiscipline}</th><th class="r">Total</th>`:""}</tr>${rows.map((r,i)=>`<tr>${full?`<td class="num faint">${i+1}</td>`:""}<td><b>${esc(nameOf(r.id)||r.name)}</b></td><td class="r num">${r.n??(r.onTime+r.late)}</td><td class="r num">${r.onTime}</td><td class="r num ${r.late?"ovd":"faint"}">${r.late}</td><td class="r num">${r.lateWaived||0}</td><td class="r num">${r.ext} (${r.waived})</td><td class="r num ${r.missed?"ovd":"faint"}">${r.missed||0}</td><td class="r num">${r.I}/${r.WB}/${r.E}</td>${pts?`<td class="r num">${fmtPts(r.delivery)}</td><td class="r num">${r.disc}</td><td class="r num"><b>${fmtPts(r.total)}</b></td>`:""}</tr>`).join("")}</table></div>`:emptyState("gauge","No numbers yet","They appear once you're on the team.")}</section>`;
 }
 
+// ---------- bulk import ----------
+const IMPORT_COLS = [["rowId","Row ID",false,"Optional. Any unique value per row (1, 2, 3…). Stops a row being imported twice. Rows whose ID starts with EXAMPLE are skipped."],["name","Task name",true,"At least 3 characters."],["channel","Channel",true,"One of the channels on the Lists tab."],["owner","Owner email",true,"Work email of a team member (Lists tab)."],["priority","Priority",true,"P0 to P5. P0 is the most urgent."],["deadline","Deadline",true,"YYYY-MM-DD (e.g. 2026-11-30), or DD-MM-YYYY."],["followup","Follow-up date",false,"Optional. Same date format."],["project","Project",false,"Optional. Exact project name from the Lists tab."],["description","Description",false,"Optional."],["pocType","Pending From type",false,"Optional. Internal, Within Brand or External."],["pocName","Pending From name",false,"Internal: team member email. Others: POC name."],["outputLink","Output link",false,"Optional. Starts with https://"]];
+let xlsxLoading = null;
+function loadXlsx(){ if (window.XLSX) return Promise.resolve(window.XLSX); if (!STANDALONE) return Promise.reject(new Error("Excel import works in the hosted app.")); return xlsxLoading ||= new Promise((ok, no) => { const sc = document.createElement("script"); sc.src = "/vendor/xlsx.js"; sc.onload = () => ok(window.XLSX); sc.onerror = () => { xlsxLoading = null; no(new Error("Couldn't load the Excel reader. Check your connection.")); }; document.head.appendChild(sc); }); }
+async function importApi(path, body){ const r = await fetch(path, { method:"POST", headers:{ "Content-Type":"application/json", "X-PCC":"1" }, credentials:"same-origin", body:JSON.stringify(body) }); const j = await r.json().catch(()=>({})); if (!r.ok) throw new Error(j.error || "Request failed."); return j; }
+async function downloadTemplate(){
+  try {
+    const X = await loadXlsx(), ppl = people().filter(p=>emailOf(p.id)), ch = S.config.channels, d = (n)=>addDays(todayIso(), n);
+    const head = IMPORT_COLS.map(([,l,req])=>l+(req?" *":""));
+    const ex = [
+      ["EXAMPLE-1","Fix suppressed hero SKUs", ch[0]||"Amazon", emailOf(ppl[0]?.id)||"name@palmonas.com", "P1", d(3), d(1), "", "Relist the 12 suppressed SKUs", "External", "Amazon Seller Support", ""],
+      ["EXAMPLE-2","Diwali banner sign-off", ch[1]||ch[0]||"Blinkit", emailOf(ppl[1]?.id||ppl[0]?.id)||"name@palmonas.com", "P2", d(5), "", "", "", "", "", ""],
+      ["EXAMPLE-3","Weekly stock check", ch[2]||ch[0]||"Myntra", emailOf(ppl[0]?.id)||"name@palmonas.com", "P3", d(7), "", "", "", "Internal", emailOf(ppl[1]?.id||ppl[0]?.id)||"", "https://docs.google.com/"],
+      [1,"","","","","","","","","","",""],[2,"","","","","","","","","","",""],[3,"","","","","","","","","","",""],
+    ];
+    const ws = X.utils.aoa_to_sheet([head, ...ex]);
+    ws["!cols"] = [10,34,14,30,10,13,15,20,34,18,28,30].map(w=>({ wch:w }));
+    const info = X.utils.aoa_to_sheet([["Column","Required","How to fill"], ...IMPORT_COLS.map(([,l,req,h])=>[l, req?"Yes":"No", h]), [], ["Tips"], ["Delete the three EXAMPLE rows (or leave them: they're skipped)."], ["One row = one task. Tasks start as To do, owned by the person in Owner email."], ["Each Row ID is imported once, so re-uploading the same file doesn't create duplicates."], ["For Google Sheets: import this file into a new sheet, keep the headers, and share it as 'Anyone with the link can view'."]]);
+    info["!cols"] = [{wch:20},{wch:10},{wch:90}];
+    const n = Math.max(ch.length, ppl.length, 6, S.projects.size);
+    const lists = X.utils.aoa_to_sheet([["Channels","Owner emails","Name","Priority","Pending From type","Projects"], ...[...Array(n)].map((_,i)=>[ch[i]||"", emailOf(ppl[i]?.id)||"", ppl[i]?.name||"", ["P0","P1","P2","P3","P4","P5"][i]||"", ["Internal","Within Brand","External"][i]||"", [...S.projects.values()][i]?.name||""])]);
+    lists["!cols"] = [{wch:16},{wch:30},{wch:20},{wch:9},{wch:18},{wch:26}];
+    const wb = X.utils.book_new(); X.utils.book_append_sheet(wb, ws, "Tasks"); X.utils.book_append_sheet(wb, info, "How to fill"); X.utils.book_append_sheet(wb, lists, "Lists");
+    X.writeFile(wb, "palmonas-task-import-template.xlsx");
+  } catch(e){ toast(e.message,"error"); }
+}
+async function readImportFile(file){
+  const X = await loadXlsx();
+  const wb = X.read(await file.arrayBuffer(), { cellDates:true });
+  const name = wb.SheetNames.find(n=>/^tasks$/i.test(n)) || wb.SheetNames[0];
+  const pad = (n) => String(n).padStart(2,"0");
+  return X.utils.sheet_to_json(wb.Sheets[name], { defval:"", raw:true }).map(r => Object.fromEntries(Object.entries(r).map(([k,v]) => [k, v instanceof Date ? `${v.getFullYear()}-${pad(v.getMonth()+1)}-${pad(v.getDate())}` : v])));
+}
+const IMP_PILL = { ok:["Ready","p-green"], created:["Created","p-green"], duplicate:["Already imported","p-slate"], error:["Fix this row","p-red"], example:["Example: skipped","p-slate"] };
+function importTable(results){
+  return `<div class="tbl-wrap"><table><tr><th>Row</th><th>Task</th><th>Owner</th><th>Deadline</th><th>Status</th><th>Notes</th></tr>${results.map(r=>`<tr><td class="num faint">${r.row}</td><td><b>${esc(r.name||"—")}</b>${r.id?`<br><a href="#" data-open="${r.id}" class="tid">${r.id}</a>`:""}</td><td>${esc(r.owner||"—")}</td><td class="num">${r.deadline?fmtD(r.deadline):"—"}</td><td><span class="pill ${IMP_PILL[r.status][1]}">${IMP_PILL[r.status][0]}</span></td><td><small class="${r.errors.length?"ovd":"muted"}">${esc([...r.errors, ...r.warnings].join(" "))||"—"}</small></td></tr>`).join("")}</table></div>`;
+}
+function viewImport(){
+  const st = S.imp || (S.imp = {}), sh = S.integ?.get("sheet"), last = sh?.last;
+  const sum = st.out?.summary;
+  return `<p class="lead">Create many tasks at once: upload an Excel or CSV file, or connect a Google Sheet that's checked every 10 minutes. Every row is validated first, and a row is never imported twice.</p>
+  <div class="grid2">
+  <section class="card"><div class="card-h"><div><h2>${ic("upload",18)}Upload Excel or CSV</h2><p>Three steps. Nothing is created until you confirm.</p></div></div><div class="pad" style="display:grid;gap:14px;padding-top:4px">
+    <div class="box"><b>1. Download the template</b><p class="muted" style="margin:4px 0 10px">It has example rows, a "How to fill" tab, and a "Lists" tab with your channels, owner emails and projects.</p><button class="btn" data-imp-template>${ic("download",16)} Download template (.xlsx)</button></div>
+    <div class="box"><b>2. Fill it in and upload it</b><p class="muted" style="margin:4px 0 10px">.xlsx, .xls or .csv, up to 1,000 rows.</p><label class="btn ${st.busy?"loading":""}" style="cursor:pointer">${ic("upload",16)} Choose file<input type="file" id="impFile" accept=".xlsx,.xls,.csv" hidden></label>${st.fileName?` <small class="muted">${esc(st.fileName)}</small>`:""}</div>
+    <div class="box"><b>3. Check and create</b>${sum?`<div class="chips" style="margin:8px 0 10px">${sum.created?`<span class="pill p-green">${sum.created} created</span>`:""}${sum.ok?`<span class="pill p-green">${sum.ok} ready</span>`:""}${sum.error?`<span class="pill p-red">${sum.error} to fix</span>`:""}${sum.duplicate?`<span class="pill p-slate">${sum.duplicate} already imported</span>`:""}${sum.example?`<span class="pill p-slate">${sum.example} example</span>`:""}</div>${st.committed?`<p class="muted" style="margin:0">Done. ${sum.created} task${sum.created===1?"":"s"} created and their owners notified.</p>`:sum.ok?`<button class="btn primary" data-imp-commit>${ic("check",16)} Create ${sum.ok} task${sum.ok===1?"":"s"}</button>${sum.error?` <small class="muted">Rows to fix are skipped. Fix them in the file and upload again any time.</small>`:""}`:`<p class="muted" style="margin:6px 0 0">Nothing to create. Fix the rows below and upload again.</p>`}`:`<p class="muted" style="margin:4px 0 0">The check appears here after you upload.</p>`}</div>
+  </div></section>
+  <section class="card"><div class="card-h"><div><h2>${ic("link",18)}Google Sheet</h2><p>Add rows to the sheet; tasks appear within 10 minutes.</p></div>${sh?`<span class="pill ${sh.enabled===false?"p-amber":"p-green"}">${sh.enabled===false?"Paused":"Connected"}</span>`:""}</div><div class="pad" style="display:grid;gap:14px;padding-top:4px">
+    ${sh?`<div class="box" style="min-width:0;overflow-wrap:anywhere"><small class="muted">Sheet</small><br><a href="${esc(sh.url)}" target="_blank" rel="noopener noreferrer" style="word-break:break-all;color:var(--brand);font-weight:700">${esc(sh.url)}</a><br><small class="muted">Connected by ${esc(nameOf(sh.connectedBy))} ${ago(sh.connectedAt)}. Tasks are created in their name.</small></div>
+      <div class="box"><b>Last check</b>${last?`<p class="muted" style="margin:4px 0 8px">${fmtT(last.at)} · ${last.by==="auto"?"automatic":`by ${esc(nameOf(last.by))}`}</p>${last.ok?`<div class="chips">${`<span class="pill p-green">${last.summary.created} new task${last.summary.created===1?"":"s"}</span>`}${last.summary.duplicate?`<span class="pill p-slate">${last.summary.duplicate} already imported</span>`:""}${last.summary.error?`<span class="pill p-red">${last.summary.error} row${last.summary.error===1?"":"s"} to fix (listed below)</span>`:""}</div>`:`<div class="err" style="margin-top:4px">${esc(last.error)}</div>`}`:`<p class="muted" style="margin:4px 0 0">Not checked yet.</p>`}</div>
+      <div class="row"><button class="btn primary" data-sheet-sync>${ic("refresh",16)} Check now</button><button class="btn" data-sheet-toggle>${sh.enabled===false?`${ic("play",16)} Resume`:`${ic("pause",16)} Pause`}</button><button class="btn ghost" data-sheet-off style="color:var(--red)">Disconnect</button></div>`
+    :`<ol style="margin:0;padding-left:18px;display:grid;gap:8px"><li>Download the template (left) and open <a href="https://sheets.new" target="_blank" rel="noopener noreferrer" style="color:var(--brand);font-weight:700">a new Google Sheet</a>. File → Import → Upload the template → <b>Replace spreadsheet</b>.</li><li>Delete the EXAMPLE rows. Keep the header row and give each row a Row ID.</li><li>Share → General access → <b>Anyone with the link · Viewer</b>, then copy the link from the <b>Tasks</b> tab.</li><li>Paste the link below and connect.</li></ol>
+      <label class="f">Google Sheet link<input type="text" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/…" value="${esc(st.sheetUrl||"")}"><small>Anyone with the link can view the sheet, so keep it to task details.</small></label>
+      <button class="btn primary" data-sheet-connect style="justify-self:start">${ic("link",16)} Check and connect</button>`}
+  </div></section></div>
+  ${sh?.last?.ok&&(sh.last.problems||[]).length?`<section class="card"><div class="card-h"><div><h2>${ic("alert",18)}Sheet rows to fix</h2><p>Fix these in the Google Sheet. They're picked up on the next check.</p></div></div>${importTable(sh.last.problems)}</section>`:""}
+  ${st.out?`<section class="card"><div class="card-h"><div><h2>${ic("tasks",18)}Rows in ${esc(st.fileName||"the file")}</h2><p>Fix red rows in the file and upload it again; rows already created are skipped.</p></div></div>${importTable(st.out.results)}</section>`:""}`;
+}
+async function importUpload(file){
+  const st = S.imp || (S.imp = {});
+  Object.assign(st, { busy:true, fileName:file.name, out:null, committed:false }); render();
+  try { st.rows = await readImportFile(file); if (!st.rows.length) throw new Error("The file has no rows under the header."); st.out = await importApi("/api/import", { rows:st.rows, commit:false }); }
+  catch(e){ toast(e.message,"error"); }
+  finally { st.busy = false; render(); }
+}
+async function importCommit(btn){
+  const st = S.imp; btn.classList.add("loading");
+  try { st.out = await importApi("/api/import", { rows:st.rows, commit:true }); st.committed = true; toast(`${st.out.summary.created} task${st.out.summary.created===1?"":"s"} created`); }
+  catch(e){ toast(e.message,"error"); }
+  finally { render(); }
+}
+
 // ---------- analytics ----------
 const AN_WIDGETS = [["trend","Delivery trend"],["owner","Owner scorecard"],["deps","Pending dependencies"],["delays","Dependency-related delays"],["blockers","Repeated blockers"],["subs","Cross-owner subtasks"],["teams","Team bottlenecks"],["chan","Channel patterns"],["esc","Escalations"]];
 const hbar = (v, max, tone="var(--brand)") => `<div class="prog" style="min-width:80px"><i style="width:${max?Math.round(v/max*100):0}%;background:${tone}"></i></div>`;
@@ -2388,7 +2460,7 @@ function viewConsole(){
     <section class="card"><div class="card-h"><div><h2>${ic("shield",18)}Roles</h2><p>Who can open which portal.</p></div><a class="btn sm ghost" href="#roles">Permissions</a></div><div class="pad" style="display:grid;gap:12px;padding-top:6px">${[["admin","Admin portal + Leadership + Team","p-violet"],["leadership","Leadership portal + Team","p-blue"],["team_lead","Leadership portal (own team) + Team","p-amber"],["member","Team portal","p-green"]].map(([r,d,tone])=>`<div class="row spread"><span><span class="pill nodot ${tone}">${ROLE_LABEL[r]}</span> <small class="muted">${d}</small></span><b class="num">${byRole(r)}</b></div>`).join("")}
       <div style="border-top:1px solid var(--line);padding-top:12px"><b style="font-size:13px">Pending invitations</b>${pend.length?pend.slice(0,4).map(i=>`<div class="row spread" style="margin-top:8px"><span style="min-width:0"><b>${esc(i.email)}</b><br><small class="muted">${ROLE_LABEL[i.role]} · sent ${ago(i.resentAt||i.sentAt)}</small></span><button class="btn sm" data-inv-resend="${i.id}">${ic("refresh",14)} Resend</button></div>`).join(""):`<p class="muted" style="margin:6px 0 0">None pending.</p>`}</div></div></section>
   </div>
-  <section class="card"><div class="card-h"><div><h2>${ic("grid",18)}Shortcuts</h2></div></div><div class="pad"><div class="stats" style="grid-template-columns:repeat(auto-fill,minmax(170px,1fr))">${[["users","User management","users"],["roles","Roles & permissions","shield"],["settings","Settings","settings"],["emails","Notifications","inbox"],["overview","Team overview","grid"],["activity","Activity log","activity"],["kpi","KPI Scoreboard","gauge"],["analytics","Analytics","activity"],["bin","Recycle Bin","trash"]].map(([k,l,i])=>`<a class="stat" href="#${k}" style="flex-direction:row;align-items:center;gap:10px;padding:12px"><span class="sic t-violet" style="margin:0">${ic(i,17)}</span><span style="color:var(--fg);font-weight:700">${l}</span></a>`).join("")}</div></div></section>`;
+  <section class="card"><div class="card-h"><div><h2>${ic("grid",18)}Shortcuts</h2></div></div><div class="pad"><div class="stats" style="grid-template-columns:repeat(auto-fill,minmax(170px,1fr))">${[["users","User management","users"],["roles","Roles & permissions","shield"],["settings","Settings","settings"],["import","Bulk import","upload"],["emails","Notifications","inbox"],["overview","Team overview","grid"],["activity","Activity log","activity"],["kpi","KPI Scoreboard","gauge"],["analytics","Analytics","activity"],["bin","Recycle Bin","trash"]].map(([k,l,i])=>`<a class="stat" href="#${k}" style="flex-direction:row;align-items:center;gap:10px;padding:12px"><span class="sic t-violet" style="margin:0">${ic(i,17)}</span><span style="color:var(--fg);font-weight:700">${l}</span></a>`).join("")}</div></div></section>`;
 }
 
 // ---------- events ----------
@@ -2458,6 +2530,12 @@ document.addEventListener("click", (e) => {
   if (el.closest("[data-cat-add]")) { (S.kpiDraftCats ||= []).push({ key:"cat"+uid(), label:"", points:1, active:true }); return render(); }
   if (el.closest("[data-adj-new]")) return adjModal();
   if (el.closest("[data-an-custom]")) return analyticsCustom();
+  if (el.closest("[data-imp-template]")) return downloadTemplate();
+  const ic2 = el.closest("[data-imp-commit]"); if (ic2) return importCommit(ic2);
+  const sc = el.closest("[data-sheet-connect]"); if (sc) { const url = $("#sheetUrl").value.trim(); (S.imp ||= {}).sheetUrl = url; sc.classList.add("loading"); return importApi("/api/import/sheet", { url }).then(r=>toast(`Connected. ${r.preview.ok} row${r.preview.ok===1?"":"s"} ready; they'll be created on the next check.`)).catch(e=>toast(e.message,"error")).finally(()=>sc.classList.remove("loading")); }
+  const ss = el.closest("[data-sheet-sync]"); if (ss) { ss.classList.add("loading"); return importApi("/api/import/sheet/sync", {}).then(r=>r.ok?toast(`${r.summary.created} new task${r.summary.created===1?"":"s"} from the sheet`):toast(r.error,"error")).catch(e=>toast(e.message,"error")).finally(()=>ss.classList.remove("loading")); }
+  if (el.closest("[data-sheet-toggle]")) { const sh = S.integ?.get("sheet"); return importApi("/api/import/sheet", { enabled: sh?.enabled===false }).then(()=>toast(sh?.enabled===false?"Sheet checks resumed":"Sheet checks paused")).catch(e=>toast(e.message,"error")); }
+  if (el.closest("[data-sheet-off]")) return confirmDialog({ title:"Disconnect the Google Sheet?", body:"Tasks already created stay. New rows won't be picked up.", confirm:"Disconnect" }).then(ok => ok && importApi("/api/import/sheet", { disconnect:true }).then(()=>toast("Disconnected")).catch(e=>toast(e.message,"error")));
   const av = el.closest("[data-adj-void]"); if (av) { const a = S.kpi.get(av.dataset.adjVoid); return confirmDialog({ title:"Remove this deduction?", body:"The points come back. The record stays, marked removed.", confirm:"Remove" }).then(async ok => { if (ok) { await S.db.doc("kpi/"+a.id).set({ ...a, voided:true, voidedBy:S.me, voidedAt:Date.now() }); toast("Deduction removed"); } }); }
   const kb = el.closest("[data-kpi-rollback]"); if (kb) { const m = kb.dataset.kpiRollback; return confirmDialog({ title:`Roll back ${fmtMonth(m)}?`, body:"The month goes back to the numbers it had before its last recalculation.", confirm:"Roll back", danger:false, icon:"restore" }).then(async ok => { if (ok && await rollbackMonth(m)) toast("Rolled back"); }); }
   const tbr = el.closest("[data-tomb-restore]"); if (tbr) return restoreTomb(tbr.dataset.tombRestore);
@@ -2504,6 +2582,7 @@ document.addEventListener("change", (e) => {
   const pc = e.target.closest("[data-perm]"); if (pc) { const k = pc.dataset.perm, defs = roleDefaults(S.permEdit.role); if (pc.checked===defs[k]) delete S.permEdit.perms[k]; else S.permEdit.perms[k] = pc.checked; const y = window.scrollY; render(); window.scrollTo(0,y); return; }
   const pl = e.target.closest("[data-perm-lead]"); if (pl) { S.permEdit.leadId = pl.value; return render(); }
   const rd = e.target.closest("[data-rdef]"); if (rd) { const [r,k] = rd.dataset.rdef.split("|"); S.rdDraft[r][k] = rd.checked; const y = window.scrollY; render(); window.scrollTo(0,y); return; }
+  if (e.target.id==="impFile" && e.target.files?.[0]) { const f = e.target.files[0]; e.target.value = ""; return importUpload(f); }
   const ct = e.target.closest("[data-cat]"); if (ct) { const [i,k] = ct.dataset.cat.split("|"); S.kpiDraftCats[+i][k] = k==="active" ? ct.checked : ct.value; return; }
   const cfm = e.target.closest("[data-cfm]"); if (cfm) { const [k,field,v] = cfm.dataset.cfm.split("|"); const f = tf(k), arr = f[field]||[]; f[field] = cfm.checked ? [...new Set([...arr, v])] : arr.filter(x=>x!==v); return render(); }
   const cfr = e.target.closest("[data-cfr]"); if (cfr) { const [k,field,v] = cfr.dataset.cfr.split("|"); tf(k)[field] = v; return render(); }
@@ -2587,6 +2666,7 @@ function skeleton(){ return `<div class="sk" style="height:56px;max-width:420px"
   db.collection("kpi").onSnapshot(snap => { S.kpi = new Map(snap.docs.map(d => [d.id, d.data()])); if (S.loaded && S.portal) render(); }, () => {});
   db.collection("pins").onSnapshot(snap => { S.pins = new Map(snap.docs.map(d => [d.id, d.data()])); if (S.loaded && !S.portal && $("#login") && !$("#login").hidden && !document.activeElement?.classList?.contains("pin-in")) showLogin(); }, () => {});
   db.collection("tombstones").onSnapshot(snap => { S.tombs = new Map(snap.docs.map(d => [d.id, d.data()])); if (S.loaded && S.portal && S.view==="bin") render(); }, () => {});
+  db.collection("integrations").onSnapshot(snap => { S.integ = new Map(snap.docs.map(d => [d.id, d.data()])); if (S.loaded && S.portal && S.view==="import") render(); }, () => {});
   db.collection("invitations").onSnapshot(snap => { S.invites = new Map(snap.docs.map(d => [d.id, d.data()])); if (S.loaded && S.portal) render(); if (S.loaded) reconcileInvites(); }, () => {});
 })();
 
