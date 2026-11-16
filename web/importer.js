@@ -49,7 +49,7 @@ function parseDate(v) {
 function iso(y, mo, d) { const t = new Date(Date.UTC(y, mo - 1, d)); return t.getUTCMonth() === mo - 1 && t.getUTCDate() === d ? t.toISOString().slice(0, 10) : undefined; }
 
 // Checks every row; with commit=true creates the valid ones. Returns one result per row.
-export async function importRows(store, { rows, me, source, commit, onCreated }) {
+export async function importRows(store, { rows, me, source, commit, onCreated, canAssign = true }) {
   if (!Array.isArray(rows)) throw Object.assign(new Error("No rows to import."), { status: 400 });
   if (rows.length > MAX_ROWS) throw Object.assign(new Error(`Up to ${MAX_ROWS} rows at a time.`), { status: 400 });
   const [team, cfg, projects, tasks] = await Promise.all(["team", "config", "projects", "tasks"].map((c) => store.list(c)));
@@ -90,10 +90,13 @@ export async function importRows(store, { rows, me, source, commit, onCreated })
     if (outputLink && !/^https?:\/\/\S+\.\S+/.test(outputLink)) errors.push("Output link must start with https://");
     const key = r.rowId ? `${source}:id:${String(r.rowId).trim()}` : `${source}:fp:` + createHash("sha1").update([name.toLowerCase(), owner?.id, deadline].join("|")).digest("hex").slice(0, 16);
     const dup = seen.has(key);
+    const viaTransfer = owner && owner.id !== me && !canAssign;
+    if (viaTransfer && !errors.length) warnings.push(`Sent to ${owner.data.alias || owner.data.displayName} as a transfer request: it stays with you until they accept.`);
     const res = { row: i + 2, name, owner: owner ? (owner.data.alias || owner.data.displayName) : r.owner || "", deadline, errors, warnings, status: errors.length ? "error" : dup ? "duplicate" : "ok" };
     if (commit && res.status === "ok") {
       const id = `IMP-${today.replace(/-/g, "").slice(2)}-${randomBytes(3).toString("hex").toUpperCase()}`;
-      const task = { id, name, channel, ownerId: owner.id, createdBy: me, priority: +pm[1], status: "NOT_STARTED", deadline, originalDeadline: deadline, followup: followup || null, description: String(r.description || ""), projectId, pocType, pocName, pocMemberId, pendingSince: pocType ? now : null, outputLink: outputLink || null, flagged: false, starredBy: [], deleted: false, access: owner.id === me ? [] : [me], extensions: [], waivers: [], transfers: [], removals: [], importKey: key, importSource: source, createdAt: now, updatedAt: now, updatedBy: me, version: 1, history: [{ at: now, by: me, text: `imported the task from ${source === "sheet" ? "the connected Google Sheet" : "an Excel/CSV upload"} (row ${i + 2})${owner.id !== me ? ` and assigned it to ${owner.data.alias || owner.data.displayName}` : ""}` }] };
+      const oname = owner.data.alias || owner.data.displayName;
+      const task = { id, name, channel, ownerId: viaTransfer ? me : owner.id, createdBy: me, priority: +pm[1], status: "NOT_STARTED", deadline, originalDeadline: deadline, followup: followup || null, description: String(r.description || ""), projectId, pocType, pocName, pocMemberId, pendingSince: pocType ? now : null, outputLink: outputLink || null, flagged: false, starredBy: [], deleted: false, access: owner.id === me ? [] : viaTransfer ? [owner.id] : [me], extensions: [], waivers: [], transfers: viaTransfer ? [{ id: randomBytes(4).toString("hex"), from: me, to: owner.id, by: me, reason: "Created for you by bulk upload", status: "PENDING", at: now }] : [], removals: [], importKey: key, importSource: source, createdAt: now, updatedAt: now, updatedBy: me, version: 1, history: [{ at: now, by: me, text: `imported the task from ${source === "sheet" ? "the connected Google Sheet" : "an Excel/CSV upload"} (row ${i + 2})${viaTransfer ? ` and asked ${oname} to take it` : owner.id !== me ? ` and assigned it to ${oname}` : ""}` }] };
       await store.put("tasks", id, task);
       seen.add(key); res.status = "created"; res.id = id;
       await onCreated?.(task);

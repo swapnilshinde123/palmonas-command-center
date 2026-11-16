@@ -274,10 +274,11 @@ const server = http.createServer(async (req, res) => {
 
     if (p.startsWith("/api/import") && req.method === "POST") {
       if (!me) return send(res, 401, { error: "Sign in first." });
-      if (!canImport(await loadCtx(store), me)) return send(res, 403, { error: "Only an Admin can import tasks." });
+      const ictx = await loadCtx(store), IP = permsOf(ictx, me);
+      if (p === "/api/import" ? !IP.create : !canImport(ictx, me)) return send(res, 403, { error: p === "/api/import" ? "You can't create tasks." : "Only an Admin can connect a Google Sheet." });
       const b = await body(req);
       if (p === "/api/import") {
-        const out = await importRows(store, { rows: b.rows, me, source: "upload", commit: !!b.commit, onCreated: (t) => notifier.onTask(null, t, me).catch(() => {}) });
+        const out = await importRows(store, { rows: b.rows, me, source: "upload", commit: !!b.commit, canAssign: !!IP.assign, onCreated: (t) => notifier.onTask(null, t, me).catch(() => {}) });
         if (b.commit) { broadcast("tasks"); log("info", "bulk import", { by: me, ...out.summary }); }
         return send(res, 200, out);
       }
