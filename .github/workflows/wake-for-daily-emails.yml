@@ -1,0 +1,19 @@
+# The app runs on Render's free plan, which sleeps after 15 minutes without visits.
+# This wakes it just after 09:00 and 21:00 IST so the daily digest emails go out on time.
+# (GitHub may start scheduled runs a few minutes late; the app sends as soon as it is awake.)
+name: Wake app for daily emails
+on:
+  schedule:
+    - cron: "31 3 * * *"   # 09:01 IST
+    - cron: "50 3 * * *"   # 09:20 IST, backup
+    - cron: "31 15 * * *"  # 21:01 IST
+    - cron: "50 15 * * *"  # 21:20 IST, backup
+  workflow_dispatch:
+jobs:
+  wake:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake the app
+        run: curl -fsS --retry 6 --retry-delay 15 --retry-all-errors --max-time 90 https://palmonas-command-center.onrender.com/healthz
+      - name: Give it a minute to send
+        run: sleep 60 && curl -fsS --max-time 60 https://palmonas-command-center.onrender.com/healthz

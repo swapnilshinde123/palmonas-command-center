@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import { createNotifier, emailInfo, previewEmail } from "./mailer.js";
 import { loadCtx, canSeeTask, validateTaskWrite, canWriteProject, canWriteSeries, permsOf, pointsAllowed, stripPoints } from "./policy.js";
 import { runRecurring } from "./jobs.js";
+import { startDigests, buildDigest } from "./digest.js";
 import { importRows, fetchSheetRows, sheetCsvUrl } from "./importer.js";
 
 const scrypt = promisify(scryptCb);
@@ -214,6 +215,7 @@ const server = http.createServer(async (req, res) => {
   const p = url.pathname;
   try {
     if (p === "/healthz") return send(res, 200, { ok: true });
+    if (p.startsWith("/email-preview/digest-") && !process.env.RENDER) { const [kind, n = "0"] = p.split("/").pop().slice(7).split("."); const mails = await buildDigest(store, kind); const m = mails[+n]; res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" }); return res.end(m ? `<!-- to ${m[0].email} · ${m[1]} -->` + m[2].html : `No email ${n}; ${mails.length} would be sent: ` + mails.map((x) => x[0].email).join(", ")); }
     if (p.startsWith("/email-preview/") && !process.env.RENDER) { const m = previewEmail(p.split("/").pop()); res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" }); return res.end(m.html); }
     if (req.method === "GET" && (p === "/" || p === "/index.html")) { res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache", ...SEC_HEADERS }); return res.end(indexHtml); }
     if (req.method === "GET" && p === "/vendor/xlsx.js") { res.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8", "Cache-Control": "public, max-age=604800, immutable", ...SEC_HEADERS }); return res.end(await readFile(path.join(DIR, "public", "vendor", "xlsx-0.20.3.full.min.js"))); }
@@ -369,6 +371,7 @@ const server = http.createServer(async (req, res) => {
   await resetIfRequested();
   await ensureAdminEmail();
   notifier = createNotifier(store, log);
+  startDigests(store, log);
   const tick = () => runRecurring(store, log, broadcast).catch((e) => log("error", "recurring job failed", { error: e.message }));
   setTimeout(tick, 5000); setInterval(tick, 15 * 60000).unref();
   setInterval(() => syncSheet().catch((e) => log("error", "sheet sync crashed", { error: e.message })), 10 * 60000).unref();

@@ -1,19 +1,19 @@
 // Email notifications: works out which events a document change represents, who should hear about it,
 // and sends a branded HTML email through Brevo, Resend (HTTPS APIs) or SMTP. Off when none is configured.
 const PROVIDER = process.env.BREVO_API_KEY ? "brevo" : process.env.RESEND_API_KEY ? "resend" : process.env.SMTP_HOST ? "smtp" : "";
-const APP_URL = (process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/$/, "");
+export const APP_URL = (process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/$/, "");
 const FROM = parseFrom(process.env.MAIL_FROM || "");
-const PRIO = ["Critical", "Urgent", "High", "Normal", "Low", "Backlog"];
-const STATUS = { NOT_STARTED: "To do", IN_PROGRESS: "In progress", ON_HOLD: "On hold", FOR_REVIEW: "For review", COMPLETED: "Completed", DROPPED: "Dropped" };
+export const PRIO = ["Critical", "Urgent", "High", "Normal", "Low", "Backlog"];
+export const STATUS = { NOT_STARTED: "To do", IN_PROGRESS: "In progress", ON_HOLD: "On hold", FOR_REVIEW: "For review", COMPLETED: "Completed", DROPPED: "Dropped" };
 const ROLE = { admin: "Admin", leadership: "Leadership", team_lead: "Team Leader", member: "Team member" };
 
 function parseFrom(v) { const m = v.match(/^\s*(.*?)\s*<\s*([^>]+)\s*>\s*$/); return m ? { name: m[1].replace(/^"|"$/g, "") || "Palmonas Command Center", email: m[2] } : { name: "Palmonas Command Center", email: v.trim() }; }
 export const emailInfo = () => ({ provider: PROVIDER, on: !!(PROVIDER && FROM.email) });
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const fmtD = (iso) => iso ? new Date(iso + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : "—";
+export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+export const fmtD = (iso) => iso ? new Date(iso + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : "—";
 
 // ---------- template ----------
-function render({ preheader, eyebrow, title, intro, task, people, details = [], quote, cta, url, tone = "#2563EB" }) {
+export function render({ preheader, eyebrow, title, intro, task, people, details = [], quote, cta, url, tone = "#2563EB", body = "", bodyText = "" }) {
   const chip = (txt, bg, fg) => `<span style="display:inline-block;padding:3px 10px;border-radius:99px;background:${bg};color:${fg};font-size:12px;font-weight:700;margin:0 6px 6px 0">${esc(txt)}</span>`;
   const late = task && ["NOT_STARTED", "IN_PROGRESS", "ON_HOLD"].includes(task.status) && task.deadline < new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
   const taskCard = task ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E3E7EF;border-radius:14px;background:#F8FAFC;margin:18px 0 6px"><tr><td style="padding:18px 20px">
@@ -41,19 +41,19 @@ function render({ preheader, eyebrow, title, intro, task, people, details = [], 
     ${eyebrow ? `<div style="display:inline-block;padding:4px 10px;border-radius:99px;background:${tone}1A;color:${tone};font-size:12px;font-weight:800;letter-spacing:.02em;margin-bottom:12px">${esc(eyebrow)}</div>` : ""}
     <h1 style="margin:0 0 8px;font-size:22px;line-height:1.3;color:#0F172A;font-weight:800">${esc(title)}</h1>
     ${intro ? `<p style="margin:0;font-size:15px;line-height:1.6;color:#475467">${intro}</p>` : ""}
-    ${quoteHtml}${taskCard}
+    ${quoteHtml}${taskCard}${body}
     ${cta ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:22px"><tr><td style="border-radius:12px;background:${tone}"><a href="${esc(url)}" style="display:inline-block;padding:13px 22px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px">${esc(cta)} →</a></td></tr></table>
     <p style="margin:14px 0 0;font-size:12px;color:#8E98AB">Button not working? Open <a href="${esc(url)}" style="color:#2563EB">${esc(url)}</a></p>` : ""}
   </td></tr>
   <tr><td style="padding:18px 26px;text-align:center;font-size:12px;line-height:1.6;color:#8E98AB">You're receiving this because you're on the Palmonas team workspace.<br>Times are in IST · <a href="${esc(APP_URL)}" style="color:#8E98AB">Open Palmonas Command Center</a></td></tr>
 </table></td></tr></table></body></html>`;
-  const text = [title, "", (intro || "").replace(/<[^>]+>/g, ""), quote ? `"${quote}"` : "", task ? `${task.id} · ${task.name}\nP${task.priority} · ${task.channel} · ${STATUS[task.status] || ""} · due ${fmtD(task.deadline)}` : "", ...details.map(([k, v]) => `${k}: ${v}`), "", cta ? `${cta}: ${url}` : "", "", "Palmonas Command Center"].filter((x) => x !== null).join("\n");
+  const text = [title, "", (intro || "").replace(/<[^>]+>/g, ""), quote ? `"${quote}"` : "", task ? `${task.id} · ${task.name}\nP${task.priority} · ${task.channel} · ${STATUS[task.status] || ""} · due ${fmtD(task.deadline)}` : "", ...details.map(([k, v]) => `${k}: ${v}`), bodyText, "", cta ? `${cta}: ${url}` : "", "", "Palmonas Command Center"].filter((x) => x !== null).join("\n");
   return { html, text };
 }
 
 // ---------- sending ----------
 let smtp;
-async function send(to, subject, { html, text }, log) {
+export async function send(to, subject, { html, text }, log) {
   if (!emailInfo().on || !to.length) return;
   for (const r of to) {
     try {
@@ -119,6 +119,19 @@ export function createNotifier(store, log) {
     if (prev?.status === "FOR_REVIEW" && next.status !== "FOR_REVIEW" && actor !== next.ownerId) add([next.ownerId], `[Palmonas] Review ${next.status === "COMPLETED" ? "accepted" : "sent back"} · ${next.id}`, { eyebrow: next.status === "COMPLETED" ? "Review accepted" : "Sent back", tone: next.status === "COMPLETED" ? "#067647" : "#B54708", title: next.status === "COMPLETED" ? `${who} accepted your work` : `${who} sent your task back`, quote: (next.reviews || []).slice(-1)[0]?.reason || undefined });
     if (prev && prev.priority !== next.priority && next.priority < prev.priority) add([next.ownerId], `[Palmonas] Priority raised · ${next.id}`, { eyebrow: "Priority changed", tone: "#B54708", title: `Priority raised to P${next.priority}`, intro: `<b>${esc(who)}</b> changed it from P${prev.priority} to P${next.priority}.` });
     if (prev && !prev.deleted && next.deleted) add([next.ownerId], `[Palmonas] Task moved to the Bin · ${next.id}`, { eyebrow: "Removed", tone: "#475467", title: "A task of yours was moved to the Recycle Bin", intro: `By <b>${esc(who)}</b>. It can be restored.`, quote: next.deletedReason, cta: null });
+    // Owner, creator, Admin and Leadership hear about every change, unless an email above already told them.
+    // Bulk imports skip this, so a 500-row upload doesn't send 500 emails to every Admin.
+    if (!(isNew && next.importSource)) {
+      const lastAt = Math.max(0, ...(prev?.history || []).map((h) => h.at || 0));
+      const lines = (next.history || []).filter((h) => (h.at || 0) > lastAt).map((h) => `${dir.name(h.by)} ${h.text}`);
+      if (isNew || lines.length) {
+        const told = new Set(out.flatMap(([to]) => to.map((r) => r.id)));
+        const watchers = [next.ownerId, next.createdBy, ...Object.keys(dir.team).filter((id) => ["admin", "leadership"].includes(dir.roleOf(id)))];
+        const to = recips(dir, watchers, actor).filter((r) => !told.has(r.id));
+        const list = lines.length ? `<div style="margin:16px 0 0;font-size:13px;font-weight:700;color:#8E98AB">What changed</div><ul style="margin:6px 0 0;padding-left:18px;font-size:14px;line-height:1.6;color:#344054">${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` : "";
+        if (to.length) out.push([to, `[Palmonas] ${isNew ? "New task" : "Task updated"} · ${next.id} · ${next.name}`, render({ task: next, people: owner, url: link(next), cta: "Open task", eyebrow: isNew ? "New task" : "Task updated", title: isNew ? `${who} created a task` : `${who} updated a task`, preheader: lines[lines.length - 1] || next.name, body: list, bodyText: lines.length ? "What changed:\n" + lines.map((l) => "- " + l).join("\n") : "" })]);
+      }
+    }
     for (const [to, subject, mail] of out) await send(to, subject, mail, log);
   }
 
