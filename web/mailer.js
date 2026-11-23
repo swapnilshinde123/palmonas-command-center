@@ -54,8 +54,9 @@ export function render({ preheader, eyebrow, title, intro, task, people, details
 // ---------- sending ----------
 let smtp;
 export async function send(to, subject, { html, text }, log) {
-  if (!emailInfo().on || !to.length) return;
-  for (const r of to) {
+  const failed = [];
+  if (!emailInfo().on || !to.length) return failed;
+  for (const r of to) for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       if (PROVIDER === "brevo") {
         const res = await fetch(process.env.BREVO_API_URL || "https://api.brevo.com/v3/smtp/email", { method: "POST", headers: { "api-key": process.env.BREVO_API_KEY, "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ sender: FROM, to: [{ email: r.email, name: r.name }], subject, htmlContent: html, textContent: text }) });
@@ -64,12 +65,19 @@ export async function send(to, subject, { html, text }, log) {
         const res = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ from: `${FROM.name} <${FROM.email}>`, to: [r.email], subject, html, text }) });
         if (!res.ok) throw new Error(`Resend ${res.status}: ${(await res.text()).slice(0, 200)}`);
       } else if (PROVIDER === "smtp") {
-        if (!smtp) { const { default: nm } = await import("nodemailer"); smtp = nm.createTransport({ host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 587), secure: Number(process.env.SMTP_PORT) === 465, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } }); }
+        if (!smtp) { const { default: nm } = await import("nodemailer"); smtp = nm.createTransport({ host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 587), secure: Number(process.env.SMTP_PORT) === 465, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }, connectionTimeout: 20000, greetingTimeout: 20000, socketTimeout: 30000 }); }
         await smtp.sendMail({ from: `"${FROM.name}" <${FROM.email}>`, to: `"${r.name}" <${r.email}>`, subject, html, text });
       }
       log("info", "email sent", { to: r.id, subject });
-    } catch (e) { log("error", "email failed", { to: r.id, error: e.message }); }
+      break;
+    } catch (e) {
+      // A dropped SMTP connection is common on free hosting: start a fresh one and try once more.
+      smtp = null;
+      log(attempt === 1 ? "warn" : "error", attempt === 1 ? "email retrying" : "email failed", { to: r.id, error: e.message });
+      if (attempt === 2) failed.push(r.id); else await new Promise((ok) => setTimeout(ok, 3000));
+    }
   }
+  return failed;
 }
 
 // ---------- who gets what ----------

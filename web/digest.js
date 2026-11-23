@@ -133,11 +133,15 @@ export function startDigests(store, log) {
     busy = true;
     try {
       const mark = (await store.get("jobs", "digest"))?.data || {};
-      if (mark[kind] === date) return;
-      await store.put("jobs", "digest", { ...mark, [kind]: date });
-      const mails = await buildDigest(store, kind);
-      for (const [p, subject, mail] of mails) await send([p], subject, mail, log);
-      log("info", "digest sent", { kind, date, count: mails.length });
+      // People whose digest failed get it again on the next tick, up to 3 tries in all.
+      const retry = mark.retry?.kind === kind && mark.retry?.date === date && (mark.retry.tries || 0) < 3 ? mark.retry : null;
+      if (mark[kind] === date && !retry?.ids?.length) return;
+      const mails = (await buildDigest(store, kind)).filter(([p]) => !retry || retry.ids.includes(p.id));
+      await store.put("jobs", "digest", { ...mark, [kind]: date, retry: null });
+      const failed = [];
+      for (const [p, subject, mail] of mails) failed.push(...await send([p], subject, mail, log));
+      if (failed.length) await store.put("jobs", "digest", { ...mark, [kind]: date, retry: { kind, date, ids: failed, tries: (retry?.tries || 0) + 1 } });
+      log("info", retry ? "digest resent" : "digest sent", { kind, date, count: mails.length, failed: failed.length });
     } catch (e) { log("error", "digest failed", { kind, error: e.message }); } finally { busy = false; }
   };
   setTimeout(tick, 8000); setInterval(tick, 60000).unref();
