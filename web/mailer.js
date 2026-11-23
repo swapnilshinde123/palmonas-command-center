@@ -1,6 +1,6 @@
 // Email notifications: works out which events a document change represents, who should hear about it,
 // and sends a branded HTML email through Brevo, Resend (HTTPS APIs) or SMTP. Off when none is configured.
-const PROVIDER = process.env.BREVO_API_KEY ? "brevo" : process.env.RESEND_API_KEY ? "resend" : process.env.SMTP_HOST ? "smtp" : "";
+const PROVIDER = process.env.BREVO_API_KEY ? "brevo" : process.env.RESEND_API_KEY ? "resend" : process.env.SMTP_HOST && process.env.SMTP_PASS ? "smtp" : "";
 export const APP_URL = (process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/$/, "");
 const FROM = parseFrom(process.env.MAIL_FROM || "");
 export const PRIO = ["Critical", "Urgent", "High", "Normal", "Low", "Backlog"];
