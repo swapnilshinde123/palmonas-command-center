@@ -9,7 +9,7 @@ import { promisify } from "node:util";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createNotifier, emailInfo, previewEmail } from "./mailer.js";
-import { loadCtx, canSeeTask, validateTaskWrite, canWriteProject, canWriteSeries, permsOf, pointsAllowed, stripPoints } from "./policy.js";
+import { roleOf, loadCtx, canSeeTask, validateTaskWrite, canWriteProject, canWriteSeries, permsOf, pointsAllowed, stripPoints } from "./policy.js";
 import { runRecurring } from "./jobs.js";
 import { startDigests, buildDigest } from "./digest.js";
 import { importRows, fetchSheetRows, sheetCsvUrl } from "./importer.js";
@@ -131,6 +131,27 @@ async function resetIfRequested() {
   await store.put("config", "main", { ...main, levels: {}, roleDefaults: main.roleDefaults || {} });
   await store.put("config", "reset", { key, at: Date.now() });
   log("info", "workspace reset", { deleted: n, kept: keep?.id || null });
+}
+// Admin "Reset all data": removes every task, project, recurring series, KPI month, invitation, purged-task copy
+// and every person except the Admin who pressed it and the workspace owner. Settings (channels, POC list,
+// role defaults) stay. A full copy is saved first in the "backups" collection, which no page can read.
+async function resetWorkspace(by) {
+  const owner = (await store.get("config", "owner"))?.data?.ownerId;
+  const keep = new Set([by, owner, ADMIN_EMAIL ? (await memberByEmail(ADMIN_EMAIL))?.id : null].filter(Boolean));
+  const COLS = ["tasks", "projects", "recurring", "kpi", "invitations", "tombstones"];
+  const backup = {};
+  for (const col of [...COLS, "team", "roles", "config"]) backup[col] = (await store.list(col)).map((d) => ({ id: d.id, data: d.data }));
+  const at = Date.now();
+  await store.put("backups", `reset-${at}`, { at, by, docs: backup });
+  let n = 0;
+  for (const col of COLS) for (const d of await store.list(col)) { await store.del(col, d.id); n++; }
+  for (const col of ["team", "roles"]) for (const d of await store.list(col)) if (!keep.has(d.id)) { await store.del(col, d.id); n++; if (col === "team") await store.pinDel(d.id); }
+  for (const u of await store.pinIds()) if (!keep.has(u)) await store.pinDel(u);
+  const main = (await store.get("config", "main"))?.data || {};
+  await store.put("config", "main", { ...main, levels: {} });
+  for (const col of [...COLS, "team", "roles", "config"]) broadcast(col);
+  log("info", "workspace reset from the app", { by, deleted: n, kept: [...keep], backup: `reset-${at}` });
+  return { ok: true, deleted: n, kept: keep.size, backup: `reset-${at}` };
 }
 async function ensureAdminEmail() {
   if (!ADMIN_EMAIL) return;
@@ -273,6 +294,15 @@ const server = http.createServer(async (req, res) => {
     if (p === "/api/logout" && req.method === "POST") {
       const tok = parseCookies(req).pcc_session; if (tok) await store.sessDel(sha(tok));
       return send(res, 200, { ok: true }, { "Set-Cookie": cookie(req, "", 0) });
+    }
+
+    if (p === "/api/admin/reset" && req.method === "POST") {
+      if (!me) return send(res, 401, { error: "Sign in first." });
+      const rctx = await loadCtx(store);
+      if (roleOf(rctx, me) !== "admin") return send(res, 403, { error: "Only an Admin can reset the workspace." });
+      const b = await body(req);
+      if (b.confirm !== "RESET") return send(res, 400, { error: "Type RESET to confirm." });
+      return send(res, 200, await resetWorkspace(me));
     }
 
     if (p.startsWith("/api/import") && req.method === "POST") {
