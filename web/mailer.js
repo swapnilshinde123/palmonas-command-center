@@ -1,8 +1,8 @@
 // Email notifications: works out which events a document change represents, who should hear about it,
 // and sends a branded HTML email through Brevo, Resend (HTTPS APIs) or SMTP. Off when none is configured.
-const PROVIDER = process.env.BREVO_API_KEY ? "brevo" : process.env.RESEND_API_KEY ? "resend" : process.env.SMTP_HOST && process.env.SMTP_PASS ? "smtp" : "";
+const PROVIDER = process.env.GAS_URL ? "gas" : process.env.BREVO_API_KEY ? "brevo" : process.env.RESEND_API_KEY ? "resend" : process.env.SMTP_HOST && process.env.SMTP_PASS ? "smtp" : "";
 export const APP_URL = (process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/$/, "");
-const FROM = parseFrom(process.env.MAIL_FROM || "");
+const FROM = parseFrom(process.env.MAIL_FROM || (process.env.GAS_URL ? "Palmonas Command Center <apps-script@palmonas>" : ""));
 export const PRIO = ["Critical", "Urgent", "High", "Normal", "Low", "Backlog"];
 export const STATUS = { NOT_STARTED: "To do", IN_PROGRESS: "In progress", ON_HOLD: "On hold", FOR_REVIEW: "For review", COMPLETED: "Completed", DROPPED: "Dropped" };
 const ROLE = { admin: "Admin", leadership: "Leadership", team_lead: "Team Leader", member: "Team member" };
@@ -58,7 +58,12 @@ export async function send(to, subject, { html, text }, log) {
   if (!emailInfo().on || !to.length) return failed;
   for (const r of to) for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      if (PROVIDER === "brevo") {
+      if (PROVIDER === "gas") {
+        // Google Apps Script web app that sends with the Gmail account that deployed it (free hosts block SMTP ports).
+        const res = await fetch(process.env.GAS_URL, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ to: r.email, name: FROM.name, subject, html, text }) });
+        const body = await res.text();
+        if (!res.ok || !/"ok"\s*:\s*true/.test(body)) throw new Error(`Apps Script ${res.status}: ${body.slice(0, 200)}`);
+      } else if (PROVIDER === "brevo") {
         const res = await fetch(process.env.BREVO_API_URL || "https://api.brevo.com/v3/smtp/email", { method: "POST", headers: { "api-key": process.env.BREVO_API_KEY, "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ sender: FROM, to: [{ email: r.email, name: r.name }], subject, htmlContent: html, textContent: text }) });
         if (!res.ok) throw new Error(`Brevo ${res.status}: ${(await res.text()).slice(0, 200)}`);
       } else if (PROVIDER === "resend") {
@@ -127,7 +132,8 @@ export function createNotifier(store, log) {
     if (prev?.status === "FOR_REVIEW" && next.status !== "FOR_REVIEW" && actor !== next.ownerId) add([next.ownerId], `[Palmonas] Review ${next.status === "COMPLETED" ? "accepted" : "sent back"} · ${next.id}`, { eyebrow: next.status === "COMPLETED" ? "Review accepted" : "Sent back", tone: next.status === "COMPLETED" ? "#067647" : "#B54708", title: next.status === "COMPLETED" ? `${who} accepted your work` : `${who} sent your task back`, quote: (next.reviews || []).slice(-1)[0]?.reason || undefined });
     if (prev && prev.priority !== next.priority && next.priority < prev.priority) add([next.ownerId], `[Palmonas] Priority raised · ${next.id}`, { eyebrow: "Priority changed", tone: "#B54708", title: `Priority raised to P${next.priority}`, intro: `<b>${esc(who)}</b> changed it from P${prev.priority} to P${next.priority}.` });
     if (prev && !prev.deleted && next.deleted) add([next.ownerId], `[Palmonas] Task moved to the Bin · ${next.id}`, { eyebrow: "Removed", tone: "#475467", title: "A task of yours was moved to the Recycle Bin", intro: `By <b>${esc(who)}</b>. It can be restored.`, quote: next.deletedReason, cta: null });
-    // Owner, creator, Admin and Leadership hear about every change, unless an email above already told them.
+    // Owner, creator, Admin, Leadership and the person who made the change hear about every change,
+    // unless an email above already told them.
     // Bulk imports skip this, so a 500-row upload doesn't send 500 emails to every Admin.
     if (!(isNew && next.importSource)) {
       const lastAt = Math.max(0, ...(prev?.history || []).map((h) => h.at || 0));
@@ -135,7 +141,7 @@ export function createNotifier(store, log) {
       if (isNew || lines.length) {
         const told = new Set(out.flatMap(([to]) => to.map((r) => r.id)));
         const watchers = [next.ownerId, next.createdBy, ...Object.keys(dir.team).filter((id) => ["admin", "leadership"].includes(dir.roleOf(id)))];
-        const to = recips(dir, watchers, actor).filter((r) => !told.has(r.id));
+        const to = recips(dir, [...watchers, actor], null).filter((r) => !told.has(r.id));
         const list = lines.length ? `<div style="margin:16px 0 0;font-size:13px;font-weight:700;color:#8E98AB">What changed</div><ul style="margin:6px 0 0;padding-left:18px;font-size:14px;line-height:1.6;color:#344054">${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` : "";
         if (to.length) out.push([to, `[Palmonas] ${isNew ? "New task" : "Task updated"} · ${next.id} · ${next.name}`, render({ task: next, people: owner, url: link(next), cta: "Open task", eyebrow: isNew ? "New task" : "Task updated", title: isNew ? `${who} created a task` : `${who} updated a task`, preheader: lines[lines.length - 1] || next.name, body: list, bodyText: lines.length ? "What changed:\n" + lines.map((l) => "- " + l).join("\n") : "" })]);
       }
