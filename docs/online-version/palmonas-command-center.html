@@ -1615,7 +1615,11 @@ function viewSettings(){
   </div></section>
   <section class="card"><div class="card-h"><div><h2>${ic("flame",18)}Escalation owners</h2><p>Escalations raised to a level go to this person.</p></div></div><div class="pad" style="display:grid;gap:12px">${["L1","L2","L3"].map(l=>`<label class="f">${l} owner<select id="lvl_${l}" ${admin?"":"disabled"}><option value="">Not assigned</option>${people().map(x=>`<option value="${x.id}" ${S.config.levels?.[l]===x.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select></label>`).join("")}${admin?`<button class="btn primary" data-save-levels style="justify-self:start">${ic("check",16)} Save owners</button>`:""}</div></section>
   ${kpiPolicyCard(admin)}
-  ${realRole()==="admin"?`<section class="card" style="border-color:color-mix(in srgb,var(--red) 40%,var(--line))"><div class="card-h"><div><h2 style="color:var(--red)">${ic("trash",18)}Reset all data</h2><p>Start fresh: removes every task, project, recurring task, KPI month, invitation and person. You and the workspace owner stay as Admin. Channels, the POC list and role settings stay.</p></div></div><div class="pad" style="display:grid;gap:12px"><div class="info">${ic("info",16)}<span>Everyone else is signed out and must be added again. A full copy is saved on the server first, so it can be brought back if this was a mistake.</span></div><button class="btn danger" data-reset-all style="justify-self:start">${ic("trash",16)} Reset all data</button></div></section>`:""}
+  ${realRole()==="admin"?`<section class="card" style="border-color:color-mix(in srgb,var(--red) 40%,var(--line))"><div class="card-h"><div><h2 style="color:var(--red)">${ic("alert",18)}Reset</h2><p>Only an Admin sees this. Each reset asks you to sign in again and type RESET. A copy is saved on the server first, so a mistake can be undone.</p></div></div><div class="pad" style="display:grid;gap:14px">
+    <div class="row spread" style="gap:12px;align-items:flex-start"><div style="flex:1;min-width:200px"><b>Reset settings</b><p class="muted" style="margin:4px 0 0">Channels, Due Soon windows, POC list, escalation owners, role permissions and the KPI policy go back to the defaults. Tasks and people stay.</p></div><button class="btn" style="color:var(--red);border-color:var(--red)" data-reset-kind="settings">${ic("refresh",16)} Reset settings</button></div>
+    <hr style="border:0;border-top:1px solid var(--line);margin:0">
+    <div class="row spread" style="gap:12px;align-items:flex-start"><div style="flex:1;min-width:200px"><b>Reset data</b><p class="muted" style="margin:4px 0 0">Removes every task, project, recurring task, KPI month, invitation and person. You and the workspace owner stay as Admin. Everyone else is signed out and must be added again. Settings stay.</p></div><button class="btn danger" data-reset-kind="data">${ic("trash",16)} Reset data</button></div>
+  </div></section>`:""}
   <section class="card"><div class="card-h"><div><h2>${ic("info",18)}How access works</h2></div></div><div class="pad"><div class="info">Admin and Leadership see every task. Team leaders see their team's tasks, project leaders their project's tasks, and team members the tasks they own or are involved in. The server enforces this: it only sends each person the tasks they may see, checks every change against these rules, stamps times itself, and never sends KPI points to people without "See KPI points".</div></div></section></div>`;
 }
 
@@ -2376,6 +2380,33 @@ function renderGoogleButton(){
   gsiLoading ||= new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = "https://accounts.google.com/gsi/client"; sc.async = true; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); });
   gsiLoading.then(draw).catch(() => { const e = $("#gErr"); if (e) e.textContent = "Couldn't load Google sign-in. Check your connection, or use your PIN below."; });
 }
+// Admin reset: sign in again (Google, or PIN), then type RESET. The server checks both.
+function resetFlow(kind){
+  const data = kind === "data", me = S.team.get(S.me) || {}, google = !!window.__PCC_GOOGLE_CLIENT_ID;
+  let credential = null;
+  const intro = data
+    ? `This removes <b>${S.tasks.size} task${S.tasks.size===1?"":"s"}</b>, every project, recurring task, KPI month and invitation, and every person except you and the workspace owner.`
+    : "Channels, Due Soon windows, the POC list, escalation owners, role permissions and the KPI policy go back to the defaults. Tasks and people stay.";
+  const body = `<div class="f"><span>1. Sign in again *</span>${google
+    ? `<div id="reauthBtn" style="min-height:44px"></div><small class="muted" id="reauthMsg">Use ${esc(me.email||"your account")}.</small>`
+    : `<input type="password" name="pin" inputmode="numeric" maxlength="6" placeholder="Your PIN">`}</div>`;
+  modal({ title: data ? "Reset all data?" : "Reset all settings?", icon: data ? "trash" : "refresh", danger:true, intro, body, submit: data ? "Reset data" : "Reset settings",
+    fields:[{ name:"confirm", label:"2. Type RESET to confirm", required:true }],
+    onMount: () => { if (!google) return; const draw = () => { const el = $("#reauthBtn"); if (!el || !window.google?.accounts?.id) return;
+        google.accounts.id.initialize({ client_id: window.__PCC_GOOGLE_CLIENT_ID, ux_mode:"popup", auto_select:false, callback: r => { credential = r.credential; const m = $("#reauthMsg"); if (m) { m.textContent = "Signed in again ✓"; m.style.color = "var(--green)"; } } });
+        renderGoogleButton.init = false;
+        el.innerHTML = ""; google.accounts.id.renderButton(el, { theme: isDark() ? "filled_black" : "outline", size:"large", text:"signin_with", shape:"pill" }); };
+      if (window.google?.accounts?.id) draw(); else { gsiLoading ||= new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = "https://accounts.google.com/gsi/client"; sc.async = true; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); }); gsiLoading.then(draw).catch(() => { const m = $("#reauthMsg"); if (m) m.textContent = "Couldn't load Google sign-in. Check your connection."; }); } },
+    run: async v => {
+      const pin = $('#modals input[name="pin"]')?.value.trim() || "";
+      if (google && !credential) throw new Error("Sign in with Google again first (step 1).");
+      if (!google && !/^\d{4,6}$/.test(pin)) throw new Error("Enter your PIN (step 1).");
+      if (v.confirm.trim() !== "RESET") throw new Error("Type RESET in capital letters (step 2).");
+      const r = await importApi("/api/admin/reset", { kind, confirm:"RESET", credential, pin });
+      toast(data ? `Data reset · ${r.deleted} records removed` : "Settings reset to defaults");
+      setTimeout(() => location.reload(), 1200);
+    } });
+}
 async function onGoogleCredential(resp){
   const e = $("#gErr"); if (e) e.textContent = "";
   const r = await window.__pcc.loginGoogle(resp.credential);
@@ -2561,7 +2592,7 @@ document.addEventListener("click", (e) => {
   const kr = el.closest("[data-kpi-reopen]"); if (kr) { const m = kr.dataset.kpiReopen; return confirmDialog({ title:`Reopen ${fmtMonth(m)}?`, body:"Scores go back to being calculated live.", confirm:"Reopen" }).then(async ok => { if (ok) { await S.db.doc("kpi/"+m).delete(); toast("Month reopened"); } }); }
   const rs = el.closest("[data-restore]"); if (rs) { const t = S.tasks.get(rs.dataset.restore); return modal({ title:"Restore task", icon:"restore", intro:"It comes back with the same ID, owner, deadline and history.", submit:"Restore", fields:[{name:"reason",label:"Reason",type:"textarea",required:true}], run: async v => { if (!(can("bin") || t.ownerId===S.me || t.deletedBy===S.me)) throw new Error("Only the owner, Admin or Leadership can restore this task."); const ok = await saveTask({ ...t, deleted:false, purgeReq:null }, `restored the task: ${v.reason}`); if (ok) toast("Task restored"); return ok; } }); }
   const pg = el.closest("[data-purge]"); if (pg) { const t = S.tasks.get(pg.dataset.purge); return modal({ title:"Permanently purge?", icon:"trash", danger:true, intro:`<b>${esc(t.name)}</b> leaves the app for good. A copy and the scores before the delete are kept in the audit store, so an Admin can bring it back if needed. Live KPI months recalculate without it.`, submit:"Purge permanently", fields:[{ name:"confirm", label:`Type ${t.id} to confirm`, required:true, check:(val)=> val!==t.id ? "Type the task ID exactly." : "" }], run: async () => { if (!can("purge")) throw new Error("You don't have purge access."); const months = [...new Set([monthOf(t.createdAt||Date.now()), (t.completedOn||"").slice(0,7), (t.deadline||"").slice(0,7)].filter(Boolean))]; const closed = months.filter(m=>isMonthDoc(S.kpi.get(m))); await S.db.doc("tombstones/"+t.id).set({ id:t.id, task:t, purgedBy:S.me, purgedAt:Date.now(), requestedBy:t.purgeReq?.by||null, requestReason:t.purgeReq?.reason||null, approvedBy:S.me, kpiBefore:Object.fromEntries(months.map(m=>[m, S.kpi.get(m)?.rows || kpiRows(m)])), recalculated:closed }); await S.db.doc("tasks/"+t.id).delete(); S.tasks.delete(t.id); for (const m of closed) await recalcMonth(m, policy(), { reason:`Permanent delete of ${t.id}`, purgeId:t.id }); S.tasks.delete(t.id); render(); toast("Task purged"); } }); }
-  if (el.closest("[data-reset-all]")) return modal({ title:"Reset all data?", icon:"trash", danger:true, intro:`This removes <b>${S.tasks.size} task${S.tasks.size===1?"":"s"}</b>, every project, recurring task, KPI month and invitation, and every person except you and the workspace owner. It can't be undone from the app.`, submit:"Reset everything", fields:[{ name:"confirm", label:"Type RESET to confirm", required:true }], run: async v => { if (v.confirm.trim() !== "RESET") throw new Error("Type RESET in capital letters to confirm."); const r = await importApi("/api/admin/reset", { confirm:"RESET" }); toast(`Workspace reset · ${r.deleted} records removed`); setTimeout(() => location.reload(), 1200); } });
+  const rk = el.closest("[data-reset-kind]"); if (rk) return resetFlow(rk.dataset.resetKind);
   if (el.closest("[data-save-settings]")) return saveSettings(el.closest("[data-save-settings]"));
   if (el.closest("[data-user-add]")) return addUserModal();
   if (el.closest("[data-invite]")) return inviteModal();

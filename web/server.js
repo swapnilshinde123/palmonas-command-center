@@ -98,7 +98,7 @@ async function verifyGoogle(credential) {
   const issOk = t.iss === "accounts.google.com" || t.iss === "https://accounts.google.com";
   const verified = t.email_verified === true || t.email_verified === "true";
   if (t.aud !== GOOGLE_CLIENT_ID || !issOk || !verified || Number(t.exp) * 1000 < Date.now() || !t.email) return null;
-  return { email: String(t.email).toLowerCase(), name: t.name || "" };
+  return { email: String(t.email).toLowerCase(), name: t.name || "", iat: Number(t.iat) || 0 };
 }
 // Records the sign-in and closes any open invitation for this email, so User management shows the person as Active.
 async function markSignedIn(m, email) {
@@ -151,7 +151,23 @@ async function resetWorkspace(by) {
   await store.put("config", "main", { ...main, levels: {} });
   for (const col of [...COLS, "team", "roles", "config"]) broadcast(col);
   log("info", "workspace reset from the app", { by, deleted: n, kept: [...keep], backup: `reset-${at}` });
-  return { ok: true, deleted: n, kept: keep.size, backup: `reset-${at}` };
+  return { ok: true, kind: "data", deleted: n, kept: keep.size, backup: `reset-${at}` };
+}
+// Admin "Reset settings": channels, Due Soon windows, POC list, escalation owners, role defaults, per-person
+// permission overrides and the KPI policy go back to the defaults a new workspace starts with. Tasks, people
+// and their roles stay. A copy of the old settings is saved first in "backups".
+async function resetSettings(by) {
+  const main = (await store.get("config", "main"))?.data || {};
+  const roles = (await store.list("roles")).map((d) => ({ id: d.id, data: d.data }));
+  const at = Date.now();
+  await store.put("backups", `settings-${at}`, { at, by, docs: { config: [{ id: "main", data: main }], roles } });
+  const seed = JSON.parse(await readFile(path.join(DIR, "seed", "initial-data.json"), "utf8"))?.config?.main || {};
+  await store.put("config", "main", { ...seed, levels: {}, ...(main.kpiHistory ? { kpiHistory: main.kpiHistory } : {}) });
+  let n = 0;
+  for (const r of roles) if (r.data?.perms && Object.keys(r.data.perms).length) { await store.put("roles", r.id, { ...r.data, perms: {} }); n++; }
+  broadcast("config"); broadcast("roles");
+  log("info", "settings reset from the app", { by, permissionOverridesCleared: n, backup: `settings-${at}` });
+  return { ok: true, kind: "settings", backup: `settings-${at}` };
 }
 async function ensureAdminEmail() {
   if (!ADMIN_EMAIL) return;
@@ -299,10 +315,22 @@ const server = http.createServer(async (req, res) => {
     if (p === "/api/admin/reset" && req.method === "POST") {
       if (!me) return send(res, 401, { error: "Sign in first." });
       const rctx = await loadCtx(store);
-      if (roleOf(rctx, me) !== "admin") return send(res, 403, { error: "Only an Admin can reset the workspace." });
+      if (roleOf(rctx, me) !== "admin") return send(res, 403, { error: "Only an Admin can reset." });
       const b = await body(req);
+      if (!["data", "settings"].includes(b.kind)) return send(res, 400, { error: "Choose what to reset." });
       if (b.confirm !== "RESET") return send(res, 400, { error: "Type RESET to confirm." });
-      return send(res, 200, await resetWorkspace(me));
+      // Sign in again: a fresh Google sign-in (last 5 minutes) by this same Admin, or their PIN when PIN sign-in is used.
+      const mine = (await store.get("team", me))?.data;
+      if (GOOGLE_CLIENT_ID) {
+        const g = await verifyGoogle(b.credential);
+        if (!g) return send(res, 401, { error: "Sign in with Google again to confirm." });
+        if (!mine?.email || g.email !== String(mine.email).toLowerCase()) return send(res, 403, { error: `Sign in as ${mine?.email || "your own account"} to confirm.` });
+        if (Date.now() / 1000 - g.iat > 300) return send(res, 401, { error: "That sign-in is too old. Sign in with Google again." });
+      } else {
+        const rec = await store.pinGet(me);
+        if (!rec || !/^\d{4,6}$/.test(String(b.pin || "")) || !timingSafeEqual(Buffer.from(await hashPin(String(b.pin), rec.salt), "hex"), Buffer.from(rec.hash, "hex"))) return send(res, 401, { error: "Enter your PIN to confirm." });
+      }
+      return send(res, 200, b.kind === "data" ? await resetWorkspace(me) : await resetSettings(me));
     }
 
     if (p.startsWith("/api/import") && req.method === "POST") {
