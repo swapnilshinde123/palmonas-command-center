@@ -34,7 +34,7 @@ export function render({ preheader, eyebrow, title, intro, task, people, details
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px">
   <tr><td style="background:#0F1B33;border-radius:18px 18px 0 0;padding:20px 26px">
     <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-      <td style="width:34px;height:34px;border-radius:50%;background:#1E2C4D;text-align:center;vertical-align:middle;color:#D9F99D;font-size:18px;font-weight:800">⚡</td>
+      <td style="width:34px;height:34px;border-radius:50%;background:#000;vertical-align:middle"><img src="${esc(APP_URL)}/email-logo.png" width="34" height="34" alt="Palmonas" style="display:block;width:34px;height:34px;border-radius:50%;border:0"></td>
       <td style="padding-left:10px"><div style="color:#fff;font-size:16px;font-weight:800;line-height:1.1">Palmonas</div><div style="color:#A9B8D6;font-size:10px;letter-spacing:.14em;font-weight:700">COMMAND CENTER</div></td>
     </tr></table></td></tr>
   <tr><td style="background:#ffffff;padding:28px 26px 26px;border-radius:0 0 18px 18px">
